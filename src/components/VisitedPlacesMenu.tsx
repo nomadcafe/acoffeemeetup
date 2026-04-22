@@ -7,6 +7,8 @@ import { formatRelativeTime, formatAbsoluteDate } from '../utils/relativeTime';
 import { computeStreak, streakFireEmoji } from '../utils/streak';
 import { buildHeatmap } from '../utils/heatmap';
 import { renderPassportCard, sharePassportCard } from '../utils/passportCard';
+import { buildLocalizedPathname } from '../i18n/detectLocale';
+import { PASSPORT_PATH } from '../routes';
 import { HeatmapGrid } from './HeatmapGrid';
 import styles from './VisitedPlacesMenu.module.css';
 
@@ -167,7 +169,15 @@ export function VisitedPlacesMenu() {
           role="region"
           aria-label={t('visited.title')}
         >
-          <h2 className={styles.dropdownTitle}>{t('visited.title')}</h2>
+          <div className={styles.dropdownTitleRow}>
+            <h2 className={styles.dropdownTitle}>{t('visited.title')}</h2>
+            <a
+              className={styles.viewFullLink}
+              href={buildLocalizedPathname(PASSPORT_PATH, locale)}
+            >
+              {t('passport.viewFull')}
+            </a>
+          </div>
           {count === 0 ? (
             <p className={styles.empty}>{t('visited.empty')}</p>
           ) : (
