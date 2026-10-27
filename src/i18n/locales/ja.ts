@@ -551,7 +551,6 @@ export const messages: MessageDict = {
   /* 2026-05 utility への切り替えに合わせて、5 枚の機能カードと
    * agent-mode タイルが消えたので、mock / row* / *Eyebrow /
    * featuresGridAria のキーも一緒に削除済み。 */
-  'showcase.eyebrowAi': 'AI 搭載',
   'showcase.eyebrowFree': '無料',
   'showcase.eyebrowOpenSource': 'オープンソース',
   'showcase.title': 'ふたりの真ん中で、いいコーヒーを。',
