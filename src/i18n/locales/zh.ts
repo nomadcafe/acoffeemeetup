@@ -547,8 +547,6 @@ export const messages: MessageDict = {
   'showcase.eyebrowOpenSource': '开源',
   'showcase.title': '在两人中间，喝一杯好咖啡。',
   'showcase.lead': '输入两个地址，ACoffee 帮你们挑一家评分高、对双方都公平的咖啡馆。',
-  'showcase.demoBadge': '公平之选',
-  'showcase.demoAria': '示意图：三个出发点的连线汇聚到中间的一家咖啡店',
   'profile.topShopsTitle': '常去咖啡店',
   'profile.shopVisits': '{{count}} 次',
   'profile.bookTitle': '约杯咖啡',
