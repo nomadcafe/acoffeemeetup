@@ -846,6 +846,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSelectedCoffeeShopIdState(id);
   }, []);
 
+  // Bumped by every search and by clearSearch. Async continuations compare
+  // against it and drop their results if a newer search has started, so a
+  // slow ETA/geocode response from search 1 can't overwrite search 2.
+  const searchSeqRef = useRef(0);
+
   const searchWithAddresses = useCallback(
     async (nextAddressA: string, nextAddressB: string, nextAddressC?: string) => {
       const a = nextAddressA.trim();
@@ -861,6 +866,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const seq = ++searchSeqRef.current;
+      const isStale = () => seq !== searchSeqRef.current;
       setAddressA(a);
       setAddressB(b);
       setAddressC(c);
@@ -880,6 +887,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ];
         if (c) geocodePromises.push(geocodeAddress(c, geocoderRef.current));
         const coords = await Promise.all(geocodePromises);
+        if (isStale()) return;
         const coordsA = coords[0];
         const coordsB = coords[1];
         const coordsC = c ? coords[2] : null;
@@ -910,6 +918,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           searchKeyword,
           searchOpenNow
         );
+        if (isStale()) return;
         // Enrich the top candidates with real transit ETAs from each
         // party. Mutates `shops` in place; soft-fails on any Routes
         // error so we always have at least distance-based fairness.
@@ -919,9 +928,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Reverse-link to owner profiles. Top 20 cap matches server-side
         // limit; chips on results below the fold rarely matter and we'd
         // rather pay zero KV reads than five for hidden cards.
-        void fetchOwnerAttributions(shops.slice(0, 20).map((s) => s.id)).then(
-          setOwnerAttributions,
-        );
+        void fetchOwnerAttributions(shops.slice(0, 20).map((s) => s.id)).then((attrs) => {
+          if (!isStale()) setOwnerAttributions(attrs);
+        });
         void enrichWithDurations(shops, [coordsA, coordsB, coordsC], {
           sortMode: searchSortMode,
         }).then(() => {
@@ -930,7 +939,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // fairness mode is on. enrichWithDurations may have skipped
           // the network call entirely (cost guard) — the .then still
           // fires, just with no-op shops.
-          setRawShops([...shops]);
+          if (!isStale()) setRawShops([...shops]);
         });
 
         // Deep-link: if the URL named a specific café (?cafe=<placeId>) and it's
@@ -980,6 +989,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return next;
         });
       } catch (e) {
+        if (isStale()) return;
         const raw = e instanceof Error ? e.message : '';
         // places.ts throws this sentinel for DNS / connection failures so
         // we can surface a clearer "check your VPN" message instead of the
@@ -990,7 +1000,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setError(raw || t('errors.generic'));
         }
       } finally {
-        setIsLoading(false);
+        if (!isStale()) setIsLoading(false);
       }
     },
     [searchMinRating, searchRadiusMeters, searchPlaceCategory, searchKeyword, searchOpenNow, searchSortMode, t]
@@ -1011,6 +1021,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const seq = ++searchSeqRef.current;
+      const isStale = () => seq !== searchSeqRef.current;
       setSearchMode('nearby');
       // Fairness sort needs an A and a B to balance — pointless in nearby
       // mode, so fall back to rating sort if the user had it on.
@@ -1041,10 +1053,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           searchKeyword,
           searchOpenNow
         );
+        if (isStale()) return;
         setRawShops(shops);
-        void fetchOwnerAttributions(shops.slice(0, 20).map((s) => s.id)).then(
-          setOwnerAttributions,
-        );
+        void fetchOwnerAttributions(shops.slice(0, 20).map((s) => s.id)).then((attrs) => {
+          if (!isStale()) setOwnerAttributions(attrs);
+        });
 
         const preselect = new URLSearchParams(window.location.search).get('cafe');
         if (preselect && shops.some((s) => s.id === preselect)) {
@@ -1065,6 +1078,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           );
         }
       } catch (e) {
+        if (isStale()) return;
         const raw = e instanceof Error ? e.message : '';
         // places.ts throws this sentinel for DNS / connection failures so
         // we can surface a clearer "check your VPN" message instead of the
@@ -1075,7 +1089,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setError(raw || t('errors.generic'));
         }
       } finally {
-        setIsLoading(false);
+        if (!isStale()) setIsLoading(false);
       }
     },
     [isSdkLoaded, searchMinRating, searchRadiusMeters, searchPlaceCategory, searchKeyword, searchOpenNow, t]
@@ -1188,6 +1202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * into a visible change.
    */
   const clearSearch = useCallback(() => {
+    searchSeqRef.current++;
     setOwnerAttributions({});
     setLocationA(null);
     setLocationB(null);
