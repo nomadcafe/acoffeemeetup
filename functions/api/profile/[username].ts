@@ -203,7 +203,12 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ env, params }) => {
     if (visits.length === 0) continue;
     let last = visits[0];
     for (const v of visits) if (v > last) last = v;
-    passportByPlace.set(r.placeId, { visits: visits.length, lastVisitMs: last });
+    // Rounded down to the UTC day: the profile only shows a date, and an
+    // exact timestamp on a public page leaks pattern-of-life.
+    passportByPlace.set(r.placeId, {
+      visits: visits.length,
+      lastVisitMs: Math.floor(last / 86_400_000) * 86_400_000,
+    });
   }
 
   const featuredCafesPublic: PublicFeaturedCafe[] = featuredRows.map((r) => {

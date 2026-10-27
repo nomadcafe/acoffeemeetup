@@ -449,6 +449,9 @@ export async function computeRouteMatrix(
   origins: LatLng[],
   destinations: LatLng[],
   mode: TravelMode = 'TRANSIT',
+  /** Keeps the KV cache writes alive after the response is sent. Without
+   *  it the runtime may cancel them, and the next search pays again. */
+  waitUntil?: (p: Promise<unknown>) => void,
 ): Promise<(number | null)[][]> {
   if (origins.length === 0 || destinations.length === 0) return [];
 
@@ -465,19 +468,25 @@ export async function computeRouteMatrix(
     }
   }
 
-  // Build a Routes request only for the missing cells. We still send
-  // the full origins/destinations arrays (Routes is per-element priced;
-  // the API doesn't let us cherry-pick pairs) but if the cache covered
-  // everything we'd have returned above. So the savings come from not
-  // hitting Routes at all on full-cache-hit searches.
+  // Routes is priced per element and can't cherry-pick pairs, so request
+  // the smallest sub-matrix covering every miss: only the origin rows and
+  // destination columns that contain one. The common case — same people,
+  // a few new cafés after a re-search — then pays for those columns only
+  // instead of the full origins × destinations grid.
+  const isMiss = (i: number, j: number) => !cached || cached[i][j] === 'miss';
+  const originIdx = origins.map((_, i) => i).filter((i) => destinations.some((_, j) => isMiss(i, j)));
+  const destIdx = destinations.map((_, j) => j).filter((j) => origins.some((_, i) => isMiss(i, j)));
+
   const key = requireKey(env);
 
   const body = {
-    origins: origins.map((o) => ({
-      waypoint: { location: { latLng: { latitude: o.lat, longitude: o.lng } } },
+    origins: originIdx.map((i) => ({
+      waypoint: { location: { latLng: { latitude: origins[i].lat, longitude: origins[i].lng } } },
     })),
-    destinations: destinations.map((d) => ({
-      waypoint: { location: { latLng: { latitude: d.lat, longitude: d.lng } } },
+    destinations: destIdx.map((j) => ({
+      waypoint: {
+        location: { latLng: { latitude: destinations[j].lat, longitude: destinations[j].lng } },
+      },
     })),
     travelMode: mode,
     // routing_preference is only valid for DRIVE. TRANSIT/WALK reject it.
@@ -518,11 +527,10 @@ export async function computeRouteMatrix(
     status?: { code?: number };
   }>;
 
-  // Initialize matrix with null (= unreachable / unknown). Routes API
-  // returns elements in arbitrary order; index in to populate.
-  const matrix: (number | null)[][] = origins.map(() =>
-    destinations.map(() => null),
-  );
+  // Fresh values for the requested sub-matrix, in full-matrix coordinates.
+  // null = unreachable / not returned. Routes returns elements in
+  // arbitrary order; index in to populate.
+  const fresh = new Map<string, number>();
   for (const el of elements) {
     if (
       typeof el.originIndex !== 'number' ||
@@ -530,41 +538,43 @@ export async function computeRouteMatrix(
     )
       continue;
     if (el.condition !== 'ROUTE_EXISTS') continue;
+    const i = originIdx[el.originIndex];
+    const j = destIdx[el.destinationIndex];
+    if (i === undefined || j === undefined) continue;
     // duration is ISO-8601 like "1234s" — strip the trailing 's' and parse.
     const raw = el.duration?.endsWith('s') ? el.duration.slice(0, -1) : el.duration;
     const seconds = raw ? Number(raw) : NaN;
-    if (Number.isFinite(seconds)) {
-      matrix[el.originIndex][el.destinationIndex] = seconds;
-    }
+    if (Number.isFinite(seconds)) fresh.set(`${i},${j}`, seconds);
   }
 
-  // Cache writes: every pair we just computed (including unreachable
-  // null cells — caching the negative result avoids re-paying on retry).
-  // Fire-and-forget — caching failures shouldn't block the response.
+  // Merge: the network response is authoritative for the cells it
+  // returned; elsewhere fall back to the cached value.
+  const matrix: (number | null)[][] = origins.map((_, i) =>
+    destinations.map((_, j) => {
+      const f = fresh.get(`${i},${j}`);
+      if (f !== undefined) return f;
+      const c = cached?.[i][j];
+      return c === undefined || c === 'miss' ? null : c;
+    }),
+  );
+
+  // Cache writes: only the cells that missed (including unreachable null
+  // cells — caching the negative result avoids re-paying on retry).
+  // Re-writing hits would just burn KV write quota.
   if (env.ROUTES_CACHE) {
     const cache = env.ROUTES_CACHE;
     const writes: Array<Promise<void>> = [];
-    for (let i = 0; i < origins.length; i++) {
-      for (let j = 0; j < destinations.length; j++) {
+    for (const i of originIdx) {
+      for (const j of destIdx) {
+        if (!isMiss(i, j)) continue;
         writes.push(persistPair(cache, origins[i], destinations[j], mode, matrix[i][j]));
       }
     }
-    // Don't await — let the response land asap.
-    void Promise.allSettled(writes);
+    const settled = Promise.allSettled(writes);
+    if (waitUntil) waitUntil(settled);
+    else void settled;
   }
 
-  // Merge cache hits (where they were present) with fresh values. The
-  // network response is authoritative for the cells it returned, but
-  // if Routes silently dropped a cell we still return the cached value.
-  if (cached) {
-    for (let i = 0; i < origins.length; i++) {
-      for (let j = 0; j < destinations.length; j++) {
-        if (matrix[i][j] == null && cached[i][j] !== 'miss') {
-          matrix[i][j] = cached[i][j] as number | null;
-        }
-      }
-    }
-  }
   return matrix;
 }
 

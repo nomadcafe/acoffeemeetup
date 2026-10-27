@@ -57,14 +57,20 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, wait
 
   const mode: TravelMode = input.mode ?? 'TRANSIT';
   try {
-    const matrix = await computeRouteMatrix(env, input.origins, input.destinations, mode);
+    const matrix = await computeRouteMatrix(
+      env,
+      input.origins,
+      input.destinations,
+      mode,
+      waitUntil,
+    );
     return Response.json({ matrix, mode });
   } catch (e) {
     if (e instanceof GoogleMapsError) {
       // Soft fail: client falls back to distance-based fairness rather
       // than blocking the search. So we 200 + an empty matrix flag.
       console.warn('[places/eta] Routes failed', e.source, e.message);
-      return Response.json({ matrix: [], mode, error: e.message });
+      return Response.json({ matrix: [], mode, error: 'routes_unavailable' });
     }
     throw e;
   }

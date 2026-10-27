@@ -251,10 +251,22 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ env, params, reques
   if (!raw) return jsonError('Not found', 404);
   const username = raw.toLowerCase();
 
+  /* Pages Functions responses aren't edge-cached from s-maxage alone, so
+   * without an explicit Cache API lookup every request re-ran the D1
+   * queries and re-rendered the PNG. Keyed on the lowercased username so
+   * /og/Foo and /og/foo share an entry; TTL comes from the response's
+   * cache-control below. */
+  const cacheKey = new Request(
+    `https://cache.internal/og/${encodeURIComponent(username)}`,
+    { method: 'GET' },
+  );
+  const cached = await caches.default.match(cacheKey);
+  if (cached) return cached;
+
   const profile = await loadProfile(env, username);
   if (!profile) return jsonError('Not found', 404);
 
-  return new ImageResponse(renderTemplate(profile), {
+  const image = new ImageResponse(renderTemplate(profile), {
     width: 1200,
     height: 630,
     headers: {
@@ -267,4 +279,9 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ env, params, reques
       'cache-control': 'public, max-age=600, s-maxage=600',
     },
   });
+  // Buffer once so the same bytes go to the client and the cache.
+  const body = await image.arrayBuffer();
+  const response = new Response(body, { status: image.status, headers: image.headers });
+  waitUntil(caches.default.put(cacheKey, response.clone()));
+  return response;
 };
