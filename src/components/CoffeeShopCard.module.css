@@ -58,34 +58,25 @@
   gap: 0.1rem;
 }
 
-/* F5 onboarding hint — small banner above the actions row on the first
- * result card, only shown to users with an empty passport. The arrow tail
- * is drawn with a CSS triangle pointing down at the ☕ visit button. */
+/* F5 onboarding hint — on the first result card, only shown to users with
+ * an empty passport. It sits inside .header (between .info and .actions in
+ * the DOM), so it's forced onto its own full-width row below them —
+ * as a flex sibling it used to squeeze the café name down to one word.
+ * No arrow: the ☕ in the copy matches the button it refers to, and an
+ * arrow can't reliably line up with that button across locales. */
 .visitHint {
+  order: 3;
+  flex: 1 0 100%;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.55rem;
-  margin-bottom: 0.4rem;
   border-radius: 0.5rem;
   background: var(--color-accent-soft, #fff4e8);
   border: 1px solid var(--color-accent, #d99a5b);
-  position: relative;
   font-size: 0.78rem;
   line-height: 1.25;
   color: var(--color-text, #2c1810);
-}
-.visitHint::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 0.85rem;
-  width: 10px;
-  height: 10px;
-  background: var(--color-accent-soft, #fff4e8);
-  border-right: 1px solid var(--color-accent, #d99a5b);
-  border-bottom: 1px solid var(--color-accent, #d99a5b);
-  transform: rotate(45deg);
 }
 .visitHintBody {
   flex: 1;
@@ -108,6 +99,7 @@
 
 .header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.5rem;
@@ -151,7 +143,10 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  /* No "·" separator between the two links: the info column is narrow on
+   * phones, so they often wrap and a separator ends up dangling at the
+   * start of the second line. The gap plus distinct colours pair them. */
+  gap: 0.25rem 0.75rem;
   margin-top: 0.35rem;
   font-size: 0.78rem;
 }
@@ -175,14 +170,6 @@
   color: var(--ac-accent-2-dark);
   text-decoration: none;
   position: relative;
-}
-
-.directionsLink::before {
-  content: '·';
-  position: absolute;
-  left: -0.6rem;
-  color: var(--ac-text-muted);
-  font-weight: 400;
 }
 
 .directionsLink:hover {
