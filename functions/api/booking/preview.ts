@@ -77,7 +77,12 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, wait
     ]);
   } catch (e) {
     if (e instanceof GoogleMapsError) {
-      return jsonError(`Couldn't find that address — ${e.message}`, e.status);
+      // Log Google's detail, return a stable message — upstream error text
+      // is internal and not useful to a visitor.
+      console.warn('[booking/preview] geocode failed', e.source, e.message);
+      return e.status < 500
+        ? jsonError("Couldn't find that address", e.status)
+        : jsonError('Address lookup is temporarily unavailable', e.status);
     }
     throw e;
   }
@@ -90,7 +95,8 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, wait
     cafe = pickBestCafe(candidates);
   } catch (e) {
     if (e instanceof GoogleMapsError) {
-      return jsonError(`Café search failed — ${e.message}`, e.status);
+      console.warn('[booking/preview] café search failed', e.source, e.message);
+      return jsonError('Café search failed', e.status);
     }
     throw e;
   }
@@ -103,7 +109,8 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, wait
       cafe = pickBestCafe(widened);
     } catch (e) {
       if (e instanceof GoogleMapsError) {
-        return jsonError(`Café search failed — ${e.message}`, e.status);
+        console.warn('[booking/preview] widened café search failed', e.source, e.message);
+        return jsonError('Café search failed', e.status);
       }
       throw e;
     }
