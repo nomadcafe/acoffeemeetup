@@ -228,6 +228,7 @@ function isoWeekdayUtc(ms: number): number {
  * misconfigured feed (e.g. UNTIL=20991231) from blowing up memory.
  */
 const MAX_INSTANCES_PER_EVENT = 200;
+const MAX_RRULE_ITERATIONS = 20_000;
 
 export function expandBusyWindows(
   events: RawEvent[],
@@ -246,14 +247,19 @@ export function expandBusyWindows(
     const rule = ev.rrule;
     const byday = rule.byday.length > 0 ? new Set(rule.byday) : new Set([isoWeekdayUtc(ev.startMs)]);
     const upper = rule.until !== null ? Math.min(rule.until, windowEndMs) : windowEndMs;
+    // `count` tracks every occurrence for RRULE COUNT=; `emitted` only the
+    // ones inside the window, so a long-running series (a weekly meeting
+    // that started years ago) doesn't hit the safety cap before it ever
+    // reaches the window.
     let count = 0;
+    let emitted = 0;
+    let iterations = 0;
     const exSet = new Set(ev.exdates);
     // Day stride: WEEKLY iterates day-by-day and filters by BYDAY; DAILY
     // jumps in interval days. WEEKLY's interval scales weeks (7 days).
     const stepMs = rule.freq === 'DAILY' ? rule.interval * MS_DAY : MS_DAY;
     let cursor = ev.startMs;
-    let weeksAdvanced = 0;
-    while (cursor < upper && count < MAX_INSTANCES_PER_EVENT) {
+    while (cursor < upper && emitted < MAX_INSTANCES_PER_EVENT) {
       const ok =
         rule.freq === 'DAILY' ? true : byday.has(isoWeekdayUtc(cursor));
       if (ok && !exSet.has(cursor)) {
@@ -261,6 +267,7 @@ export function expandBusyWindows(
         const endMs = cursor + duration;
         if (endMs > windowStartMs && cursor < windowEndMs) {
           out.push({ startMs: cursor, endMs });
+          emitted++;
         }
         count++;
       }
@@ -271,15 +278,14 @@ export function expandBusyWindows(
         const dayOfWeek = isoWeekdayUtc(cursor);
         const dtStartDayOfWeek = isoWeekdayUtc(ev.startMs);
         if (dayOfWeek === dtStartDayOfWeek) {
-          weeksAdvanced++;
           if (rule.interval > 1) {
             const skip = (rule.interval - 1) * 7 * MS_DAY;
             cursor += skip;
           }
         }
       }
-      // Fallback safety
-      if (weeksAdvanced > 520) break; // 10 years
+      // Fallback safety: day-by-day stepping over ~50 years of history.
+      if (++iterations > MAX_RRULE_ITERATIONS) break;
     }
   }
   return out;
@@ -290,6 +296,27 @@ export function expandBusyWindows(
 // the blast radius: only http(s), short timeout, bounded body size.
 const ICS_FETCH_TIMEOUT_MS = 5_000;
 const ICS_MAX_BYTES = 512 * 1024;
+const ICS_MAX_REDIRECTS = 3;
+
+/** Reject URLs a calendar feed has no business living at: non-https,
+ *  localhost, raw IP literals and internal-looking hostnames. Workers
+ *  can't reach private networks anyway; this keeps the fetcher from
+ *  being pointed at anything other than an ordinary public host. */
+function assertFetchableCalendarUrl(url: URL): void {
+  if (url.protocol !== 'https:') {
+    throw new Error('Calendar URL must use https');
+  }
+  const host = url.hostname.toLowerCase().replace(/\.$/, '');
+  const isIpLiteral = /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith('[');
+  if (
+    isIpLiteral ||
+    !host.includes('.') ||
+    host === 'localhost' ||
+    /\.(localhost|local|internal|lan|home|arpa)$/.test(host)
+  ) {
+    throw new Error('Calendar URL must point to a public host');
+  }
+}
 
 /**
  * Top-level: fetch the iCal URL, parse, and return busy windows that
@@ -313,16 +340,25 @@ export async function fetchBusyWindows(
   } catch {
     throw new Error('Invalid calendar URL');
   }
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    throw new Error('Calendar URL must use https');
-  }
+  assertFetchableCalendarUrl(parsed);
 
-  const r = await fetch(httpUrl, {
-    cache: 'no-store',
-    redirect: 'follow',
-    signal: AbortSignal.timeout(ICS_FETCH_TIMEOUT_MS),
-  });
-  if (!r.ok) throw new Error(`ICS fetch failed: ${r.status}`);
+  // Follow redirects by hand so every hop gets the same URL checks — with
+  // redirect: 'follow' a public URL could bounce to localhost or an IP.
+  let target = parsed;
+  let r: Response | null = null;
+  for (let hop = 0; hop <= ICS_MAX_REDIRECTS; hop++) {
+    r = await fetch(target.toString(), {
+      cache: 'no-store',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(ICS_FETCH_TIMEOUT_MS),
+    });
+    const location = r.status >= 300 && r.status < 400 ? r.headers.get('location') : null;
+    if (!location) break;
+    if (hop === ICS_MAX_REDIRECTS) throw new Error('Calendar URL redirected too many times');
+    target = new URL(location, target);
+    assertFetchableCalendarUrl(target);
+  }
+  if (!r || !r.ok) throw new Error(`ICS fetch failed: ${r?.status ?? 'no response'}`);
 
   const declared = Number(r.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > ICS_MAX_BYTES) {

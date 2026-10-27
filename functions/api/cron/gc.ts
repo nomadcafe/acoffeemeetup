@@ -1,6 +1,7 @@
 import { type AuthEnv } from '../../_lib/auth';
 import { jsonError } from '../../_lib/passport';
 import { runBookingGc } from '../../_lib/gc';
+import { constantTimeEqual } from '../../_lib/hmac';
 
 /**
  * Bearer-secured nightly garbage collector. Deletes:
@@ -16,7 +17,7 @@ async function handle(env: AuthEnv, request: Request): Promise<Response> {
     return jsonError('CRON_SECRET not configured', 500);
   }
   const auth = request.headers.get('authorization') ?? '';
-  if (auth !== `Bearer ${env.CRON_SECRET}`) {
+  if (!constantTimeEqual(auth, `Bearer ${env.CRON_SECRET}`)) {
     return jsonError('Unauthorized', 401);
   }
   const result = await runBookingGc(env);

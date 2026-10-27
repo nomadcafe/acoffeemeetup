@@ -281,10 +281,10 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
       await resend.emails.send({
         from: env.RESEND_FROM_EMAIL,
         to: input.visitorEmail,
-        // Reply-to = host email so a "wait, never mind" reply still
-        // reaches a human, even though the host doesn't know yet that
-        // the request exists.
-        replyTo: organizer.email,
+        // No reply-to here: the recipient address is whatever an anonymous
+        // requester typed, so putting the host's email on it would hand
+        // that address to anyone who submits the form. The host's email is
+        // only revealed once they approve (see bookings/[id]/approve.ts).
         subject: `Confirm your coffee request to ${handle} ☕`,
         html: renderVisitorConfirmRequestHtml({
           hostHandle: handle,

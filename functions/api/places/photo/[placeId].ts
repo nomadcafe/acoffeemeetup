@@ -86,6 +86,10 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ params, request, en
   // Step 1: Place Details with the photos field mask. We only need
   // photos[0].name — Google charges per request not per field.
   let photoName: string | null = null;
+  // Only a definitive "Google has no photo for this place" is worth caching
+  // for the full KV TTL. Timeouts, 5xx and 429s are transient — caching
+  // them would hide the photo for a month after a brief outage.
+  let definitiveNoPhoto = false;
   try {
     const detailsRes = await fetch(
       `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`,
@@ -100,9 +104,16 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ params, request, en
     if (detailsRes.ok) {
       const data = (await detailsRes.json()) as { photos?: Array<{ name?: string }> };
       photoName = data.photos?.[0]?.name ?? null;
+      definitiveNoPhoto = photoName === null;
+    } else if (detailsRes.status === 400 || detailsRes.status === 404) {
+      definitiveNoPhoto = true;
     }
   } catch {
-    // Network error or timeout — treat as no photo, will retry after KV TTL.
+    // Network error or timeout — transient, don't negative-cache.
+  }
+
+  if (!photoName && !definitiveNoPhoto) {
+    return new Response(null, { status: 502, headers: { 'cache-control': 'no-store' } });
   }
 
   if (!photoName) {
@@ -132,12 +143,9 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ params, request, en
   }
 
   if (!bytes || bytes.byteLength === 0) {
-    if (kv) {
-      waitUntil(
-        kv.put(cacheKey, NO_PHOTO_MARKER, { expirationTtl: KV_TTL_S }),
-      );
-    }
-    return new Response(null, { status: 502 });
+    // Media fetch failures are transient (we already know a photo exists),
+    // so let the next request retry instead of negative-caching.
+    return new Response(null, { status: 502, headers: { 'cache-control': 'no-store' } });
   }
 
   // Step 3: persist to R2 + KV.
