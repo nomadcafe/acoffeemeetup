@@ -12,6 +12,7 @@ import { SocialIcon } from './SocialIcon';
 import { SyncIndicator } from './SyncIndicator';
 import { avatarGradient } from '../utils/avatarGradient';
 import { identifyBrand } from '../utils/socialBrand';
+import { safeHref } from '../utils/safeHref';
 import styles from './PublicProfilePage.module.css';
 
 interface PublicShop {
@@ -205,6 +206,7 @@ function ProfileSkeleton() {
 function ProfileBody({ profile }: { profile: PublicProfile }) {
   const { t, locale } = useI18n();
   const initialChar = (profile.displayName ?? profile.username)[0]?.toUpperCase() ?? '?';
+  const safeSocialLinks = profile.socialLinks.filter((l) => safeHref(l.url) !== null);
 
   return (
     <>
@@ -250,9 +252,9 @@ function ProfileBody({ profile }: { profile: PublicProfile }) {
           </h1>
         )}
         {profile.bio ? <p className={styles.bio}>{profile.bio}</p> : null}
-        {profile.socialLinks.length > 0 ? (
+        {safeSocialLinks.length > 0 ? (
           <ul className={styles.socialLinkList}>
-            {profile.socialLinks.map((l) => {
+            {safeSocialLinks.map((l) => {
               const brand = identifyBrand(l.url);
               return (
                 <li key={`${l.label}-${l.url}`}>
@@ -390,8 +392,9 @@ function FeaturedCafeCard({ cafe }: { cafe: PublicFeaturedCafe }) {
     `&query_place_id=${encodeURIComponent(cafe.placeId)}`;
 
   // Pick the single highest-priority link for favorite cards.
-  const favoriteLink =
-    cafe.links.instagram ?? cafe.links.website ?? cafe.links.menu ?? cafe.links.bookingExternal;
+  const favoriteLink = safeHref(
+    cafe.links.instagram ?? cafe.links.website ?? cafe.links.menu ?? cafe.links.bookingExternal,
+  );
 
   return (
     <li
@@ -482,7 +485,7 @@ function FeaturedCafeOwnedLinks({ links }: { links: FeaturedCafeLinks }) {
     { key: 'menu', label: t('profile.featuredCafeLinkMenu') },
     { key: 'bookingExternal', label: t('profile.featuredCafeLinkBooking') },
   ];
-  const present = slots.filter((s) => !!links[s.key]);
+  const present = slots.filter((s) => safeHref(links[s.key]) !== null);
   if (present.length === 0) return null;
   return (
     <div className={styles.featuredCafeLinkStrip}>
@@ -490,7 +493,7 @@ function FeaturedCafeOwnedLinks({ links }: { links: FeaturedCafeLinks }) {
         <a
           key={key}
           className={styles.featuredCafeLinkChip}
-          href={links[key] ?? '#'}
+          href={safeHref(links[key]) ?? undefined}
           target="_blank"
           rel="noopener noreferrer nofollow"
         >

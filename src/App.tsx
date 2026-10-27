@@ -220,6 +220,10 @@ function AppRoute() {
   const logicalPath = stripLocalePrefix(pathname);
 
   let body: ReactNode;
+  // Routes that use the Maps SDK: the home search, the passport map, and
+  // the café/address autocomplete on /account and /bookings. Everything
+  // else (notably public profiles) skips the SDK download entirely.
+  let loadMaps = false;
   if (isUpdatesPath(logicalPath)) {
     body = (
       <>
@@ -230,6 +234,7 @@ function AppRoute() {
       </>
     );
   } else if (isPassportPath(logicalPath)) {
+    loadMaps = true;
     body = (
       <>
         <Suspense fallback={<div className="routeFallback" aria-hidden="true" />}>
@@ -248,6 +253,7 @@ function AppRoute() {
       </Suspense>
     );
   } else if (isAccountPath(logicalPath)) {
+    loadMaps = true;
     body = (
       <>
         <Suspense fallback={<div className="routeFallback" aria-hidden="true" />}>
@@ -257,6 +263,7 @@ function AppRoute() {
       </>
     );
   } else if (isBookingsPath(logicalPath)) {
+    loadMaps = true;
     body = (
       <>
         <Suspense fallback={<div className="routeFallback" aria-hidden="true" />}>
@@ -295,6 +302,7 @@ function AppRoute() {
       </>
     );
   } else {
+    loadMaps = true;
     body = <AppShell />;
   }
 
@@ -304,7 +312,7 @@ function AppRoute() {
   // on whatever route the user happens to be looking at when the SW
   // detects an update (rather than only on home).
   return (
-    <AppProvider>
+    <AppProvider loadMaps={loadMaps}>
       {body}
       <UpdateToast />
     </AppProvider>

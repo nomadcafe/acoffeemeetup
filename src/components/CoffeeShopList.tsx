@@ -15,9 +15,9 @@ export function CoffeeShopList() {
     midpoint,
     selectedCoffeeShopId,
     setSelectedCoffeeShopId,
-    addressA,
-    addressB,
-    addressC,
+    locationA,
+    locationB,
+    locationC,
     agentMode,
     searchPlaceCategory,
     searchMode,
@@ -148,9 +148,9 @@ export function CoffeeShopList() {
         ? [t('share.nearbyTitle')]
         : [
             t('share.title'),
-            `${t('share.from')}: ${addressA || '-'}`,
-            `${t('share.to')}: ${addressB || '-'}`,
-            ...(addressC ? [`${t('share.third')}: ${addressC}`] : []),
+            `${t('share.from')}: ${locationA?.address || '-'}`,
+            `${t('share.to')}: ${locationB?.address || '-'}`,
+            ...(locationC ? [`${t('share.third')}: ${locationC.address}`] : []),
           ];
     return [...header, '', ...lines, '', window.location.href].join('\n');
   };
@@ -198,7 +198,7 @@ export function CoffeeShopList() {
         <p className={styles.reasoningStrip} aria-live="polite">
           <span className={styles.reasoningSparkle} aria-hidden>✦</span>
           {t(`agentReason.${agentMode}`, {
-            count: addressC ? 3 : 2,
+            count: locationC ? 3 : 2,
           })}
         </p>
       ) : null}
