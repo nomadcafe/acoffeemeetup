@@ -207,19 +207,28 @@ export interface CancellationParams {
   hostHandle: string;
   visitorName: string;
   startStr: string;
-  cafeName: string;
-  cafeAddress: string;
+  /** Null while the booking is still `requested` — the host hadn't picked
+   *  a café yet, so there's no venue to show. */
+  cafeName: string | null;
+  cafeAddress: string | null;
+}
+
+/** "Was at <café>" card for cancel/reschedule mails; omitted when no café
+ *  was ever chosen. */
+function wasAtCard(name: string | null, address: string | null): string {
+  if (!name) return '';
+  return `    <div style="margin:24px 0;padding:16px 18px;background:#faf6f1;border-radius:10px;">
+      <div style="font-size:11px;color:#8a7b70;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;margin-bottom:6px;">Was at</div>
+      <div style="font-size:18px;font-weight:600;color:#2c1810;">${escape(name)}</div>
+      ${address ? `<div style="font-size:14px;color:#5c4030;margin-top:4px;">${escape(address)}</div>` : ''}
+    </div>`;
 }
 
 export function renderVisitorCancellationHtml(p: CancellationParams): string {
   return `${SHELL_OPEN}
     <h1 style="margin:0 0 4px;font-size:22px;color:#2c1810;">Coffee with ${escape(p.hostHandle)} — cancelled</h1>
     <p style="margin:0;color:#7a6a60;font-size:14px;">${escape(p.startStr)}</p>
-    <div style="margin:24px 0;padding:16px 18px;background:#faf6f1;border-radius:10px;">
-      <div style="font-size:11px;color:#8a7b70;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;margin-bottom:6px;">Was at</div>
-      <div style="font-size:18px;font-weight:600;color:#2c1810;">${escape(p.cafeName)}</div>
-      <div style="font-size:14px;color:#5c4030;margin-top:4px;">${escape(p.cafeAddress)}</div>
-    </div>
+${wasAtCard(p.cafeName, p.cafeAddress)}
     <p style="margin:0 0 8px;color:#5c4030;font-size:14px;line-height:1.5;">
       Hi ${escape(p.visitorName)} — ${escape(p.hostHandle)} cancelled this coffee.
       Sorry about that. You can pick a new time on their profile when you're ready.
@@ -243,11 +252,7 @@ export function renderVisitorRescheduleRequestHtml(p: RescheduleRequestParams): 
   return `${SHELL_OPEN}
     <h1 style="margin:0 0 4px;font-size:22px;color:#2c1810;">${escape(p.hostHandle)} would like to reschedule ☕</h1>
     <p style="margin:0;color:#7a6a60;font-size:14px;">${escape(p.startStr)}</p>
-    <div style="margin:24px 0;padding:16px 18px;background:#faf6f1;border-radius:10px;">
-      <div style="font-size:11px;color:#8a7b70;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;margin-bottom:6px;">Was at</div>
-      <div style="font-size:18px;font-weight:600;color:#2c1810;">${escape(p.cafeName)}</div>
-      <div style="font-size:14px;color:#5c4030;margin-top:4px;">${escape(p.cafeAddress)}</div>
-    </div>
+${wasAtCard(p.cafeName, p.cafeAddress)}
     <p style="margin:0 0 14px;color:#5c4030;font-size:14px;line-height:1.5;">
       Hi ${escape(p.visitorName)} — ${escape(p.hostHandle)} can't make this slot
       anymore. Pick a new time below and we'll auto-pick a café between you again.
@@ -315,11 +320,7 @@ export function renderOrganizerCancellationHtml(p: CancellationParams): string {
   return `${SHELL_OPEN}
     <h1 style="margin:0 0 4px;font-size:22px;color:#2c1810;">${escape(p.visitorName)} cancelled their coffee</h1>
     <p style="margin:0;color:#7a6a60;font-size:14px;">${escape(p.startStr)}</p>
-    <div style="margin:24px 0;padding:16px 18px;background:#faf6f1;border-radius:10px;">
-      <div style="font-size:11px;color:#8a7b70;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;margin-bottom:6px;">Was at</div>
-      <div style="font-size:18px;font-weight:600;color:#2c1810;">${escape(p.cafeName)}</div>
-      <div style="font-size:14px;color:#5c4030;margin-top:4px;">${escape(p.cafeAddress)}</div>
-    </div>
+${wasAtCard(p.cafeName, p.cafeAddress)}
     <p style="margin:0 0 8px;color:#5c4030;font-size:14px;line-height:1.5;">
       The slot is free again — anyone visiting acoffee.com/${escape(p.hostHandle.replace(/^@/, ''))} can take it.
     </p>
