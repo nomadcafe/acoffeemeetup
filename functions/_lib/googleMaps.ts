@@ -284,6 +284,36 @@ export async function searchNearbyCafes(
 }
 
 /**
+ * Fetch a place's website from Places Details. Used to verify owner claims
+ * server-side — the client also sends a websiteUri, but trusting it would
+ * let anyone claim any café by pairing it with their own email domain.
+ * Returns null when Google has no website on file.
+ */
+export async function fetchPlaceWebsiteUri(env: AuthEnv, placeId: string): Promise<string | null> {
+  const key = requireKey(env);
+  let res: Response;
+  try {
+    res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+      headers: {
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask': 'websiteUri',
+      },
+    });
+  } catch (e) {
+    throw new GoogleMapsError(
+      `Places network error: ${e instanceof Error ? e.message : String(e)}`,
+      502,
+      'network',
+    );
+  }
+  if (!res.ok) {
+    throw new GoogleMapsError(`Places details HTTP ${res.status}`, 502, 'places');
+  }
+  const json = (await res.json()) as { websiteUri?: string };
+  return json.websiteUri ?? null;
+}
+
+/**
  * Look up the IANA timezone for a lat/lng using Google's Time Zone API.
  * Used by /api/account PATCH to derive a correct timezone from the
  * organizer's home base, so "Mon 14:00-17:00" means 2-5pm in the city

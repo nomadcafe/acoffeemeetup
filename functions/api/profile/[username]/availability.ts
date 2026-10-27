@@ -4,7 +4,8 @@ import { getDb } from '../../../_lib/db';
 import { bookings, user } from '../../../_lib/db/schema';
 import { jsonError } from '../../../_lib/jsonError';
 import { enumerateOpenSlots, parseAvailability } from '../../../_lib/booking';
-import { fetchBusyWindows } from '../../../_lib/icsBusy';
+import { fetchBusyWindows, type BusyWindow } from '../../../_lib/icsBusy';
+import { rateLimit, rateLimitResponse } from '../../../_lib/rateLimit';
 
 /**
  * Public read — returns the next two weeks of bookable slots for the
@@ -20,10 +21,21 @@ import { fetchBusyWindows } from '../../../_lib/icsBusy';
 const DAYS_AHEAD = 14;
 const SLOT_GRANULARITY_MIN = 30;
 const DEFAULT_DURATION_MIN = 60;
+/** How long parsed iCal busy windows are reused across visitors. Without
+ *  this every profile view re-fetches the host's calendar URL, which makes
+ *  the endpoint a request amplifier aimed at whatever URL the host set. */
+const BUSY_CACHE_TTL_S = 10 * 60;
 
-export const onRequestGet: PagesFunction<AuthEnv> = async ({ env, params }) => {
+export const onRequestGet: PagesFunction<AuthEnv> = async ({ request, env, params, waitUntil }) => {
   const raw = typeof params.username === 'string' ? params.username : null;
   if (!raw) return jsonError('Not found', 404);
+
+  const limit = await rateLimit(request, { waitUntil }, {
+    bucket: 'availability',
+    limit: 60,
+    windowSec: 10 * 60,
+  });
+  if (!limit.ok) return rateLimitResponse(limit);
   const username = raw.toLowerCase();
 
   const db = getDb(env);
@@ -98,48 +110,62 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ env, params }) => {
         ? organizer.busyCalendarSyncedAt.getTime()
         : Number(organizer.busyCalendarSyncedAt)
       : 0;
-    try {
-      const busy = await fetchBusyWindows(
-        organizer.busyCalendarIcsUrl,
-        windowStartMs,
-        windowEndMs,
-      );
-      for (const w of busy) {
+    const cacheKey = await busyCacheKey(organizer.id, organizer.busyCalendarIcsUrl);
+    const cachedBusy = await readBusyCache(cacheKey);
+    if (cachedBusy) {
+      for (const w of cachedBusy) {
         existing.push({
           scheduledAt: w.startMs,
           durationMinutes: Math.max(1, Math.round((w.endMs - w.startMs) / 60_000)),
         });
       }
-      // Clear the error on first success after a failure; refresh the
-      // syncedAt timestamp at most once per hour so we don't write to
-      // D1 on every visitor view of a popular profile.
-      const oneHourAgo = Date.now() - 60 * 60_000;
-      const needsClearError = previousError != null;
-      const needsSyncedRefresh = previousSyncedMs < oneHourAgo;
-      if (needsClearError || needsSyncedRefresh) {
-        await db
-          .update(user)
-          .set({
-            busyCalendarLastError: null,
-            busyCalendarLastErrorAt: null,
-            busyCalendarSyncedAt: now,
-          })
-          .where(eq(user.id, organizer.id));
-      }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      console.warn('[availability] iCal fetch failed', organizer.id, message);
-      // Only write if the error message changed, to avoid hammering
-      // D1 when a feed has been broken for hours and getting hit by
-      // every visitor.
-      if (previousError !== message) {
-        await db
-          .update(user)
-          .set({
-            busyCalendarLastError: message.slice(0, 500),
-            busyCalendarLastErrorAt: now,
-          })
-          .where(eq(user.id, organizer.id));
+    } else {
+      try {
+        // Fetch a little past the window so a cached copy still covers the
+        // full range for the whole TTL.
+        const busy = await fetchBusyWindows(
+          organizer.busyCalendarIcsUrl,
+          windowStartMs,
+          windowEndMs + BUSY_CACHE_TTL_S * 1000,
+        );
+        waitUntil(writeBusyCache(cacheKey, busy));
+        for (const w of busy) {
+          existing.push({
+            scheduledAt: w.startMs,
+            durationMinutes: Math.max(1, Math.round((w.endMs - w.startMs) / 60_000)),
+          });
+        }
+        // Clear the error on first success after a failure; refresh the
+        // syncedAt timestamp at most once per hour so we don't write to
+        // D1 on every visitor view of a popular profile.
+        const oneHourAgo = Date.now() - 60 * 60_000;
+        const needsClearError = previousError != null;
+        const needsSyncedRefresh = previousSyncedMs < oneHourAgo;
+        if (needsClearError || needsSyncedRefresh) {
+          await db
+            .update(user)
+            .set({
+              busyCalendarLastError: null,
+              busyCalendarLastErrorAt: null,
+              busyCalendarSyncedAt: now,
+            })
+            .where(eq(user.id, organizer.id));
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.warn('[availability] iCal fetch failed', organizer.id, message);
+        // Only write if the error message changed, to avoid hammering
+        // D1 when a feed has been broken for hours and getting hit by
+        // every visitor.
+        if (previousError !== message) {
+          await db
+            .update(user)
+            .set({
+              busyCalendarLastError: message.slice(0, 500),
+              busyCalendarLastErrorAt: now,
+            })
+            .where(eq(user.id, organizer.id));
+        }
       }
     }
   }
@@ -164,3 +190,35 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ env, params }) => {
     },
   );
 };
+
+async function busyCacheKey(userId: string, icsUrl: string): Promise<Request> {
+  // The URL hash is part of the key so changing the calendar URL takes
+  // effect immediately instead of after the TTL.
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(icsUrl));
+  const urlHash = Array.from(new Uint8Array(digest).slice(0, 8), (b) =>
+    b.toString(16).padStart(2, '0'),
+  ).join('');
+  return new Request(
+    `https://cache.internal/ics-busy/${encodeURIComponent(userId)}/${urlHash}`,
+    { method: 'GET' },
+  );
+}
+
+async function readBusyCache(key: Request): Promise<BusyWindow[] | null> {
+  const hit = await caches.default.match(key);
+  if (!hit) return null;
+  try {
+    return (await hit.json()) as BusyWindow[];
+  } catch {
+    return null;
+  }
+}
+
+function writeBusyCache(key: Request, busy: BusyWindow[]): Promise<void> {
+  return caches.default.put(
+    key,
+    Response.json(busy, {
+      headers: { 'cache-control': `public, max-age=${BUSY_CACHE_TTL_S}` },
+    }),
+  );
+}

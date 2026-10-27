@@ -4,6 +4,7 @@ import type { AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { user } from '../../_lib/db/schema';
 import { jsonError } from '../../_lib/jsonError';
+import { rateLimit, rateLimitResponse } from '../../_lib/rateLimit';
 import {
   GoogleMapsError,
   geocodeAddress,
@@ -36,7 +37,16 @@ const InputSchema = z.object({
   visitorAddress: z.string().trim().min(2).max(200),
 });
 
-export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, waitUntil }) => {
+  // Each uncached call costs a Geocode plus up to two Nearby Searches,
+  // and the endpoint is public — cap it per IP.
+  const limit = await rateLimit(request, { waitUntil }, {
+    bucket: 'booking-preview',
+    limit: 20,
+    windowSec: 10 * 60,
+  });
+  if (!limit.ok) return rateLimitResponse(limit);
+
   let input: z.infer<typeof InputSchema>;
   try {
     input = InputSchema.parse(await request.json());

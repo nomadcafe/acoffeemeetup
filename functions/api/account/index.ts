@@ -4,7 +4,12 @@ import { createAuth, type AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { user, featuredCafes } from '../../_lib/db/schema';
 import { getSessionUser, jsonError } from '../../_lib/passport';
-import { GoogleMapsError, geocodeAddress, lookupTimezone } from '../../_lib/googleMaps';
+import {
+  GoogleMapsError,
+  fetchPlaceWebsiteUri,
+  geocodeAddress,
+  lookupTimezone,
+} from '../../_lib/googleMaps';
 import { fetchBusyWindows } from '../../_lib/icsBusy';
 import { verifyOwnerByEmailDomain } from '../../_lib/ownerVerify';
 
@@ -348,9 +353,16 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) =
     );
     if (input.featuredCafes.length > 0) {
       const now = new Date();
+      const verifiedAt = await resolveOwnerVerification(
+        env,
+        db,
+        sessionUser.id,
+        sessionUser.email,
+        input.featuredCafes,
+      );
       const rows = input.featuredCafes.map((c, idx) => {
-        const verified =
-          c.relation === 'owned' && verifyOwnerByEmailDomain(sessionUser.email, c.websiteUri);
+        const verifiedSince = verifiedAt.get(c.placeId) ?? null;
+        const verified = verifiedSince !== null;
         // Empty-string nullable fields collapse to NULL so the public
         // renderer's "if not null, render" checks stay clean.
         const norm = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
@@ -374,7 +386,7 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) =
           // it on owned cards.
           ownerPinnedNote: norm(c.ownerPinnedNote),
           ownerVerified: verified,
-          ownerVerifiedAt: verified ? now : null,
+          ownerVerifiedAt: verifiedSince,
           createdAt: now,
           updatedAt: now,
         };
@@ -389,3 +401,60 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) =
 
   return Response.json({ ok: true });
 };
+
+/**
+ * Decide which owned cafés get the verified-owner badge. Returns
+ * placeId → the time it was (or stays) verified.
+ *
+ * The client-sent websiteUri is only a cheap pre-filter: if it doesn't
+ * match the user's email domain there's nothing to verify. When it does
+ * match, the real website is fetched from Places so a forged websiteUri
+ * can't earn the badge. Cafés already verified on a previous save keep
+ * their status without another Places call, and a Places failure leaves
+ * the badge off rather than blocking the save.
+ */
+async function resolveOwnerVerification(
+  env: AuthEnv,
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  email: string | null | undefined,
+  cafes: ReadonlyArray<{ placeId: string; relation: string; websiteUri?: string | null }>,
+): Promise<Map<string, Date>> {
+  const result = new Map<string, Date>();
+  const candidates = cafes.filter(
+    (c) => c.relation === 'owned' && verifyOwnerByEmailDomain(email, c.websiteUri),
+  );
+  if (candidates.length === 0) return result;
+
+  const existing = await db
+    .select({
+      placeId: featuredCafes.placeId,
+      ownerVerified: featuredCafes.ownerVerified,
+      ownerVerifiedAt: featuredCafes.ownerVerifiedAt,
+    })
+    .from(featuredCafes)
+    .where(eq(featuredCafes.userId, userId));
+  const previouslyVerified = new Map(
+    existing
+      .filter((r) => r.ownerVerified && r.ownerVerifiedAt)
+      .map((r) => [r.placeId, r.ownerVerifiedAt as Date]),
+  );
+
+  const now = new Date();
+  await Promise.all(
+    candidates.map(async (c) => {
+      const prior = previouslyVerified.get(c.placeId);
+      if (prior) {
+        result.set(c.placeId, prior);
+        return;
+      }
+      try {
+        const realWebsite = await fetchPlaceWebsiteUri(env, c.placeId);
+        if (verifyOwnerByEmailDomain(email, realWebsite)) result.set(c.placeId, now);
+      } catch (e) {
+        console.error('owner verification: Places lookup failed', c.placeId, e);
+      }
+    }),
+  );
+  return result;
+}

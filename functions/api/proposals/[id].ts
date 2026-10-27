@@ -5,6 +5,7 @@ import type { AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { proposals, user } from '../../_lib/db/schema';
 import { jsonError } from '../../_lib/passport';
+import { rateLimit, rateLimitResponse } from '../../_lib/rateLimit';
 import {
   renderProposalAcceptedHtml,
   renderProposalCafeChangedHtml,
@@ -118,9 +119,26 @@ const ActionSchema = z.union([
   }),
 ]);
 
-export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, params }) => {
+export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, params, waitUntil }) => {
   const id = typeof params.id === 'string' ? params.id : '';
   if (!id) return jsonError('Missing id', 400);
+
+  // Anyone holding the link can POST, and state changes email the sender.
+  // Limit per IP and per proposal so a looped shift-time can't mailbomb
+  // the sender from one or many IPs.
+  const ipLimit = await rateLimit(request, { waitUntil }, {
+    bucket: 'proposal-action',
+    limit: 30,
+    windowSec: 10 * 60,
+  });
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit);
+  const proposalLimit = await rateLimit(request, { waitUntil }, {
+    bucket: 'proposal-action-id',
+    limit: 20,
+    windowSec: 60 * 60,
+    keyOverride: id,
+  });
+  if (!proposalLimit.ok) return rateLimitResponse(proposalLimit);
 
   let input: z.infer<typeof ActionSchema>;
   try {

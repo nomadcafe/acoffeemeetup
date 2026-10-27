@@ -2,12 +2,14 @@ import { createDeepSeek } from '@ai-sdk/deepseek';
 import { generateText } from 'ai';
 import { z } from 'zod';
 import { rateLimit, rateLimitResponse } from '../../_lib/rateLimit';
-import { readSummaryCache, writeSummaryCache } from '../../_lib/summaryCache';
+import { hashSummaryInput, readSummaryCache, writeSummaryCache } from '../../_lib/summaryCache';
 
 interface Env {
   DEEPSEEK_API_KEY: string;
   AI_SUMMARY_MODEL?: string;
 }
+
+const MAX_REVIEW_CHARS = 1000;
 
 const InputSchema = z.object({
   placeId: z.string().min(1).max(200),
@@ -15,12 +17,15 @@ const InputSchema = z.object({
   reviews: z
     .array(
       z.object({
-        text: z.string().min(1).max(5000),
+        // Long reviews are truncated rather than rejected; the summary is
+        // capped at ~120 chars so the tail of a 5k-char review adds cost,
+        // not signal.
+        text: z.string().min(1).max(5000).transform((t) => t.slice(0, MAX_REVIEW_CHARS)),
         rating: z.number().min(0).max(5).optional(),
       }),
     )
     .min(1)
-    .max(20),
+    .max(8),
   locale: z.enum(['en', 'ja', 'zh']).default('en'),
 });
 
@@ -47,8 +52,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
     return jsonError(err instanceof Error ? err.message : 'Invalid request body', 400);
   }
 
+  const inputHash = await hashSummaryInput([input.placeName, input.reviews]);
+
   // Cache hit — return without touching the model or the rate limiter.
-  const cached = await readSummaryCache(input.placeId, input.locale);
+  const cached = await readSummaryCache(input.placeId, input.locale, inputHash);
   if (cached) {
     return Response.json(
       { summary: cached, cached: true },
@@ -58,7 +65,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
 
   const limit = await rateLimit(request, { waitUntil }, {
     bucket: 'summarize',
-    limit: 120,
+    limit: 30,
     windowSec: 60 * 60,
   });
   if (!limit.ok) return rateLimitResponse(limit);
@@ -75,10 +82,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
         )
         .join('\n\n')}`,
       temperature: 0.4,
+      maxOutputTokens: 200,
     });
 
     const summary = text.trim();
-    writeSummaryCache(input.placeId, input.locale, summary, waitUntil);
+    writeSummaryCache(input.placeId, input.locale, inputHash, summary, waitUntil);
 
     return Response.json(
       { summary, cached: false },
@@ -91,7 +99,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
       },
     );
   } catch (err) {
-    return jsonError(err instanceof Error ? err.message : 'Upstream model error', 502);
+    console.error('summarize: upstream model error', err);
+    return jsonError('Upstream model error', 502);
   }
 };
 
