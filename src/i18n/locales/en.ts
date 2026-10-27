@@ -116,7 +116,7 @@ export const messages: MessageDict = {
   'location.swap': 'Swap A and B',
 
 
-  'hero.samplesTitle': 'Try a sample search:',
+  'hero.samplesTitle': 'Try',
   'hero.samplesLabel': 'Sample searches',
 
   'list.loadingCoffee': 'Finding great coffee spots…',
@@ -125,7 +125,7 @@ export const messages: MessageDict = {
   'list.emptyMeetup': 'No highly-rated places found nearby.',
   'list.emptyHint': 'Try locations that are closer together, widen the radius, or lower the minimum rating.',
   'list.emptyWidenAction': 'Widen the search',
-  'list.nearMe': 'Show top-rated coffee near me ☕',
+  'list.nearMe': 'Or find top-rated coffee near me',
   'list.nearMeLoading': 'Getting your location…',
   'list.nearMeUnavailable': "Couldn't determine your location. Enter a starting point above.",
   'list.nearMePermissionDenied': 'Location access is blocked. Allow it from the lock icon in your browser address bar, or type your starting point above.',
@@ -569,8 +569,8 @@ export const messages: MessageDict = {
   'showcase.eyebrowAi': 'AI-powered',
   'showcase.eyebrowFree': 'Free',
   'showcase.eyebrowOpenSource': 'Open Source',
-  'showcase.title': 'What is ACoffee?',
-  'showcase.lead': 'An AI agent that picks where to meet for coffee, plus everything around the table.',
+  'showcase.title': 'Meet halfway, over great coffee.',
+  'showcase.lead': 'Enter two addresses. ACoffee picks a well-rated café that’s fair for both of you.',
   'showcase.demoBadge': 'Fair pick',
   'showcase.demoAria': 'Diagram: three party locations converging on a single café',
   'profile.topShopsTitle': 'Favourite cafés',

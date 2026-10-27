@@ -1,7 +1,8 @@
 .card {
   background: var(--ac-surface);
-  border-radius: var(--ac-radius-lg);
-  padding: 1rem;
+  border-radius: var(--ac-radius-xl);
+  padding: 1.1rem 1.15rem;
+  border: 1px solid var(--ac-border);
   box-shadow: var(--ac-shadow-card);
   transition: box-shadow 0.2s, transform var(--ac-motion-fast);
   position: relative;
@@ -52,22 +53,28 @@
   border-radius: 4px;
 }
 
+/* Footer action row: log / save on the left, the outward action
+ * (Propose or Share) pushed to the right. */
 .actions {
   display: flex;
   align-items: center;
   gap: 0.1rem;
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--ac-border);
+}
+
+.actions > :last-child {
+  margin-left: auto;
 }
 
 /* F5 onboarding hint — on the first result card, only shown to users with
- * an empty passport. It sits inside .header (between .info and .actions in
- * the DOM), so it's forced onto its own full-width row below them —
- * as a flex sibling it used to squeeze the café name down to one word.
- * No arrow: the ☕ in the copy matches the button it refers to, and an
- * arrow can't reliably line up with that button across locales. */
+ * an empty passport. Sits directly above the footer action row that holds
+ * the ☕ button it refers to. No arrow: the ☕ in the copy matches the
+ * button, and an arrow can't reliably line up with it across locales. */
 .visitHint {
-  order: 3;
-  flex: 1 0 100%;
   display: flex;
+  margin-top: 0.85rem;
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.55rem;
@@ -99,7 +106,6 @@
 
 .header {
   display: flex;
-  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.5rem;
@@ -113,8 +119,10 @@
 
 .name {
   margin: 0;
-  font-size: 1.05rem;
+  font-family: var(--ac-font-display);
+  font-size: 1.2rem;
   font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--ac-text);
   letter-spacing: -0.005em;
   /* Wrap up to 2 lines so long café names stay readable; ellipsis after.
@@ -145,35 +153,25 @@
   align-items: center;
   /* No "·" separator between the two links: the info column is narrow on
    * phones, so they often wrap and a separator ends up dangling at the
-   * start of the second line. The gap plus distinct colours pair them. */
+   * start of the second line. The gap pairs them. */
   gap: 0.25rem 0.75rem;
   margin-top: 0.35rem;
   font-size: 0.78rem;
 }
 
-.mapsLink {
-  font-weight: 600;
-  color: #1a73e8;
-  text-decoration: none;
-}
-
-.mapsLink:hover {
-  text-decoration: underline;
-}
-
-/* "Get directions" is the next-step action from a picked cafe — visually
- * distinct from "Open in Maps" (the place page) but in the same row so
- * the user processes them as a pair. Sage tone matches our agent
- * accent vocabulary. */
+.mapsLink,
 .directionsLink {
   font-weight: 600;
-  color: var(--ac-accent-2-dark);
-  text-decoration: none;
-  position: relative;
+  color: var(--ac-text-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--ac-border-strong);
+  text-underline-offset: 0.22em;
 }
 
+.mapsLink:hover,
 .directionsLink:hover {
-  text-decoration: underline;
+  color: var(--ac-text);
+  text-decoration-color: currentColor;
 }
 
 /* Owner-attribution chip — small, low-contrast, sits beside the Google

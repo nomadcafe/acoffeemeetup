@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, RefObject } from 'react';
 import { useAddressDraft, useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
-import { RichText } from './RichText';
 import {
   useAddressAutocomplete,
   type UseAddressAutocomplete,
@@ -84,7 +83,6 @@ export function LocationInput() {
   return (
     <form className={styles.container} onSubmit={handleSubmit}>
       <h2 className={styles.title}>{t('location.title')}</h2>
-      <RichText as="p" className={styles.subtitle} text={t('location.subtitle')} />
 
       <div className={styles.tripCard}>
         <div className={styles.tripRow}>
@@ -180,30 +178,35 @@ export function LocationInput() {
           >
             + {t('location.addThird')}
           </button>
-          {addressA.trim() && addressB.trim() ? (
-            <p className={styles.addThirdHint}>{t('location.addThirdHint')}</p>
-          ) : null}
         </div>
       ) : null}
 
-      <div className={styles.templateActions}>
-        <button
-          type="button"
-          className={styles.miniButton}
-          onClick={() => addAddressTemplate(addressA)}
-          disabled={!addressA.trim() || isLoading}
-        >
-          {t('location.saveA')}
-        </button>
-        <button
-          type="button"
-          className={styles.miniButton}
-          onClick={() => addAddressTemplate(addressB)}
-          disabled={!addressB.trim() || isLoading}
-        >
-          {t('location.saveB')}
-        </button>
-      </div>
+      {/* Primary action sits directly under the inputs; saved places and
+          recents are secondary and follow it. */}
+      <button type="submit" className={styles.button} disabled={isLoading}>
+        {isLoading ? t('location.searching') : t('location.findButton')}
+      </button>
+
+      {addressA.trim() || addressB.trim() ? (
+        <div className={styles.templateActions}>
+          <button
+            type="button"
+            className={styles.miniButton}
+            onClick={() => addAddressTemplate(addressA)}
+            disabled={!addressA.trim() || isLoading}
+          >
+            {t('location.saveA')}
+          </button>
+          <button
+            type="button"
+            className={styles.miniButton}
+            onClick={() => addAddressTemplate(addressB)}
+            disabled={!addressB.trim() || isLoading}
+          >
+            {t('location.saveB')}
+          </button>
+        </div>
+      ) : null}
 
       {addressTemplates.length > 0 ? (
         <div className={styles.quickBlock}>
@@ -247,7 +250,7 @@ export function LocationInput() {
             </button>
           </div>
           <div className={styles.recentList}>
-            {recentSearches.slice(0, 5).map((r) => (
+            {recentSearches.slice(0, 3).map((r) => (
               <div key={r.id} className={styles.recentRow}>
                 <button
                   type="button"
@@ -255,12 +258,9 @@ export function LocationInput() {
                   onClick={() => handleUseRecent(r.addressA, r.addressB, r.addressC)}
                   disabled={isLoading}
                 >
-                  <span className={styles.recentUse}>{t('location.useRecent')}</span>
-                  <span className={styles.recentLine}>A: {r.addressA}</span>
-                  <span className={styles.recentLine}>B: {r.addressB}</span>
-                  {r.addressC ? (
-                    <span className={styles.recentLine}>C: {r.addressC}</span>
-                  ) : null}
+                  <span className={styles.recentLine}>
+                    {[r.addressA, r.addressB, r.addressC].filter(Boolean).join(' ↔ ')}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -300,10 +300,6 @@ export function LocationInput() {
           </div>
         </div>
       ) : null}
-
-      <button type="submit" className={styles.button} disabled={isLoading}>
-        {isLoading ? t('location.searching') : t('location.findButton')}
-      </button>
     </form>
   );
 }

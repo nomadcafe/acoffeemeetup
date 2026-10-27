@@ -18,7 +18,7 @@ import { VisitedPlacesMenu } from './components/VisitedPlacesMenu';
 import { SiteBottomNav } from './components/SiteBottomNav';
 import { HeaderNavLinks } from './components/HeaderNavLinks';
 import { BottomSheet } from './components/BottomSheet';
-import { AppHero } from './components/AppHero';
+import { AppHero, HeroQuickStarts } from './components/AppHero';
 import { CoffeeNudge } from './components/CoffeeNudge';
 import { GoogleNetworkBanner } from './components/GoogleNetworkBanner';
 import { StreakReminder } from './components/StreakReminder';
@@ -186,6 +186,7 @@ function AppShell() {
         {useInlinePreSearch ? (
           <aside className="sidebar sidebarInline">
             <LocationInput />
+            <HeroQuickStarts />
             <AgentModeChips />
             <SearchFilters />
             <CoffeeShopList />

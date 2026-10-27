@@ -25,40 +25,42 @@
   text-align: center;
 }
 
+/* Quick starts — a quiet line under the form, not a second set of
+ * primary buttons. Text-weight chips, centred, wrapping freely. */
+.quickStarts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
 .samples {
-  margin: 0.75rem auto 0;
-  max-width: 560px;
-  text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.5rem;
+  font-size: 0.85rem;
 }
 
 .samplesTitle {
-  margin: 0 0 0.4rem 0;
-  font-size: 0.74rem;
   color: var(--ac-text-muted);
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-align: center;
-}
-
-.samplesList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  font-weight: 500;
 }
 
 .sampleChip {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.6rem 0.75rem;
-  background: var(--ac-surface);
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.3rem 0.75rem;
+  background: transparent;
   border: 1px solid var(--ac-border);
-  border-radius: 9px;
+  border-radius: var(--ac-radius-pill);
   color: var(--ac-text);
-  font-size: 0.85rem;
+  font: inherit;
   cursor: pointer;
-  text-align: left;
   transition: background var(--ac-motion-fast), border-color var(--ac-motion-fast);
 }
 
@@ -69,47 +71,21 @@
 
 .sampleA,
 .sampleB {
-  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 500;
 }
 
 .sampleArrow {
   flex-shrink: 0;
-  color: var(--ac-accent);
-  font-weight: 700;
-}
-
-/* Per-sample emoji prefix. Pairs with the agent mode tagged on the
- * sample so the chip telegraphs both "address pair" + "what mode"
- * without an extra label. Slightly bumped size so the glyph reads
- * at chip scale. */
-.sampleEmoji {
-  flex-shrink: 0;
-  font-size: 1rem;
-  line-height: 1;
+  color: var(--ac-text-muted);
 }
 
 @media (hover: hover) {
   .sampleChip:hover:not(:disabled) {
-    background: var(--ac-surface-tinted);
-    border-color: var(--ac-accent);
-  }
-}
-
-@media (min-width: 768px) {
-  .samplesList {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .sampleChip {
-    width: auto;
-    flex: 0 1 auto;
+    background: var(--ac-surface);
+    border-color: var(--ac-border-strong);
   }
 }
 

@@ -274,37 +274,6 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
             </a>
           ) : null}
         </div>
-        {showVisitHint ? (
-          <div className={styles.visitHint} role="status">
-            <span className={styles.visitHintBody}>{t('visitHint.body')}</span>
-            <button
-              type="button"
-              className={styles.visitHintDismiss}
-              onClick={(e) => {
-                e.stopPropagation();
-                onDismissVisitHint?.();
-              }}
-              aria-label={t('visitHint.dismissAria')}
-            >
-              ✕
-            </button>
-          </div>
-        ) : null}
-        <div className={styles.actions}>
-          <VisitedButton shop={shop} />
-          <StarButton shop={shop} />
-          {/* Share vs Propose: one or the other based on mode, never
-              both. In meetup mode (≥2 parties) the user almost always
-              wants to send a concrete "let's go here at this time"
-              proposal — the search-link Share is redundant. In nearby
-              (single-party) mode proposals make no sense, so a
-              search-link Share is what's useful. */}
-          {searchMode === 'nearby' ? (
-            <ShareButton shop={shop} />
-          ) : (
-            <ProposeButton shop={shop} />
-          )}
-        </div>
       </div>
 
       <div className={styles.details}>
@@ -315,7 +284,9 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
         </div>
 
         <div className={styles.distanceGroup}>
-          <div className={styles.distances}>
+          {/* The A/B/M legend lives in the tooltip; as an always-on line
+              it was the noisiest text on every card. */}
+          <div className={styles.distances} title={isNearby ? undefined : t('card.distanceHint')}>
             {isNearby ? (
               <span
                 className={styles.distance}
@@ -403,9 +374,6 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
               </>
             )}
           </div>
-          {!isNearby ? (
-            <p className={styles.distanceHint}>{t('card.distanceHint')}</p>
-          ) : null}
           {!isNearby && searchSortMode === 'fairness' && fairnessGap != null ? (
             <p className={styles.distanceHint}>
               {t('card.fairnessGap', {
@@ -423,6 +391,40 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
       </div>
 
       <AiSummary t={t} state={summary} onLoad={loadSummary} />
+
+      {/* Actions live in a footer row so the name and address get the
+          card's full width instead of sharing it with three buttons. */}
+      {showVisitHint ? (
+        <div className={styles.visitHint} role="status">
+          <span className={styles.visitHintBody}>{t('visitHint.body')}</span>
+          <button
+            type="button"
+            className={styles.visitHintDismiss}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDismissVisitHint?.();
+            }}
+            aria-label={t('visitHint.dismissAria')}
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
+      <div className={styles.actions}>
+        <VisitedButton shop={shop} />
+        <StarButton shop={shop} />
+        {/* Share vs Propose: one or the other based on mode, never
+            both. In meetup mode (≥2 parties) the user almost always
+            wants to send a concrete "let's go here at this time"
+            proposal — the search-link Share is redundant. In nearby
+            (single-party) mode proposals make no sense, so a
+            search-link Share is what's useful. */}
+        {searchMode === 'nearby' ? (
+          <ShareButton shop={shop} />
+        ) : (
+          <ProposeButton shop={shop} />
+        )}
+      </div>
 
       {promptForVisit != null ? (
         <div className={styles.notePrompt}>
