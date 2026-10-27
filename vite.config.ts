@@ -4,6 +4,16 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    // `npm run pages:dev` runs Pages Functions on 8788 alongside Vite.
+    // wrangler 4 ignores --proxy when wrangler.toml sets
+    // pages_build_output_dir (it serves dist/ instead), so the proxying
+    // goes the other way: Vite serves the SPA with HMR and forwards API
+    // calls to wrangler. Plain `npm run dev` still works for UI-only work.
+    proxy: {
+      '/api': 'http://localhost:8788',
+    },
+  },
   build: {
     rollupOptions: {
       output: {
