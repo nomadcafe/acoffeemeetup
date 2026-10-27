@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import styles from './NearbyApproxBanner.module.css';
@@ -22,19 +21,17 @@ export const NEARBY_SRC_KEY = 'ACoffee-nearby-src';
 export function NearbyApproxBanner() {
   const { t } = useI18n();
   const { searchMode } = useApp();
-  const [source, setSource] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (searchMode !== 'nearby') {
-      setSource(null);
-      return;
-    }
+  // Read during render rather than syncing into state from an effect:
+  // sessionStorage is synchronous and cheap, and this also picks up a new
+  // value from a second "near me" click while already in nearby mode.
+  let source: string | null = null;
+  if (searchMode === 'nearby') {
     try {
-      setSource(sessionStorage.getItem(NEARBY_SRC_KEY));
+      source = sessionStorage.getItem(NEARBY_SRC_KEY);
     } catch {
-      setSource(null);
+      source = null;
     }
-  }, [searchMode]);
+  }
 
   if (searchMode !== 'nearby' || source !== 'ip') return null;
 

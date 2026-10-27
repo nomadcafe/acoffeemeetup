@@ -643,7 +643,7 @@ export const messages: MessageDict = {
     'The booking was cancelled before you confirmed. To meet anyway, send a fresh request from {{handle}}\'s page.',
   'confirmPage.terminalRejectedTitle': 'The host can\'t make it',
   'confirmPage.terminalRejectedBody':
-    "{{handle}} can\'t make this slot. You can pick another time on their page.",
+    "{{handle}} can't make this slot. You can pick another time on their page.",
   'confirmPage.failed': "Something went wrong. The link may have expired or already been used.",
   'confirmPage.linkInvalidTitle': 'Link not recognised',
   'confirmPage.linkInvalidBody': 'This confirmation link is missing or malformed. Open the link from your email directly.',

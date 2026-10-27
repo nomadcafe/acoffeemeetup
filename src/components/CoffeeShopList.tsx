@@ -37,9 +37,10 @@ export function CoffeeShopList() {
   const [visitHintDismissed, setVisitHintDismissed] = useState(() => {
     try { return localStorage.getItem(VISIT_HINT_KEY) === '1'; } catch { return false; }
   });
+  // Logging a visit dismisses the hint for good. The render condition
+  // below already hides it once visits exist; this just persists that.
   useEffect(() => {
     if (visitedShops.length > 0 && !visitHintDismissed) {
-      setVisitHintDismissed(true);
       try { localStorage.setItem(VISIT_HINT_KEY, '1'); } catch { /* localStorage may be disabled — fine, hint just re-shows next session */ }
     }
   }, [visitedShops.length, visitHintDismissed]);

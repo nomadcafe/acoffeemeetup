@@ -77,12 +77,8 @@ export function AccountSetupPage() {
   // session lands so a user who signs in mid-wizard doesn't sit on the
   // loading screen forever. Once the user has picked a step manually
   // (state below), we don't override it.
-  const [step, setStep] = useState<Step | null>(null);
-  useEffect(() => {
-    if (step != null) return;
-    if (!sessionUser) return;
-    setStep(determineStep(sessionUser));
-  }, [step, sessionUser]);
+  const [pickedStep, setStep] = useState<Step | null>(null);
+  const step: Step | null = pickedStep ?? (sessionUser ? determineStep(sessionUser) : null);
 
   const homeHref = buildLocalizedPathname('/', locale);
   const accountHref = buildLocalizedPathname(ACCOUNT_PATH, locale);
