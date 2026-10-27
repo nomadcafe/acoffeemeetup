@@ -24,7 +24,7 @@ export function HomeFeatureShowcase() {
       <div className={styles.hero}>
         <div className={styles.heroText}>
           <span className={styles.eyebrow}>
-            {t('showcase.eyebrowAi')} · {t('showcase.eyebrowFree')} ·{' '}
+            {t('showcase.eyebrowFree')} ·{' '}
             <a
               className={styles.eyebrowLink}
               href="https://github.com/nomadcafe/acoffeecom"

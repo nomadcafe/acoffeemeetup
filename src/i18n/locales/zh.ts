@@ -543,7 +543,6 @@ export const messages: MessageDict = {
   'profile.featuredCafeLinkBooking': '预订',
   /* 2026-05 utility 精简后保留的 showcase keys；mock / row* / *Eyebrow /
    * featuresGridAria 已随 5 张次要功能卡 + tile 网格一起移除。 */
-  'showcase.eyebrowAi': 'AI 驱动',
   'showcase.eyebrowFree': '免费',
   'showcase.eyebrowOpenSource': '开源',
   'showcase.title': '在两人中间，喝一杯好咖啡。',

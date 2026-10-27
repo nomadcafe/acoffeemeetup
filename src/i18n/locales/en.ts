@@ -566,7 +566,6 @@ export const messages: MessageDict = {
    * feature grid and pre-search agent-mode tiles were removed during
    * the 2026-05 utility pivot; mock / row* / *Eyebrow / featuresGridAria
    * keys went with them. */
-  'showcase.eyebrowAi': 'AI-powered',
   'showcase.eyebrowFree': 'Free',
   'showcase.eyebrowOpenSource': 'Open Source',
   'showcase.title': 'Meet halfway, over great coffee.',
