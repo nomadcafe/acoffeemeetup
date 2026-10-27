@@ -1,6 +1,15 @@
-import { createContext, useContext, useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import {
+  createContext,
+  lazy,
+  Suspense,
+  useContext,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  useEffect,
+} from 'react';
 import type { ReactNode } from 'react';
-import { useJsApiLoader } from '@react-google-maps/api';
 import type {
   Location,
   CoffeeShop,
@@ -19,7 +28,6 @@ import { calculateMidpoint, centroid } from '../utils/midpoint';
 import { pickAgentModeByTime } from '../utils/pickAgentModeByTime';
 import { track } from '../utils/analytics';
 import { useSession } from '../utils/authClient';
-import { GOOGLE_MAPS_LIBRARIES } from '../utils/googleMapsLoader';
 import {
   claimPassport,
   deleteVisitedShop,
@@ -66,13 +74,6 @@ interface AppContextType extends AppState {
   isSdkLoaded: boolean;
   /** Surface load failures so visible map components can show an error. */
   sdkLoadError: Error | undefined;
-  setAddressA: (address: string) => void;
-  setAddressB: (address: string) => void;
-  setAddressC: (address: string) => void;
-  addressA: string;
-  addressB: string;
-  /** Optional 3rd party in the trip card. Empty string when 2-person mode. */
-  addressC: string;
   findMeetupSpot: () => Promise<void>;
   toggleStar: (shop: CoffeeShop) => void;
   isStarred: (shopId: string) => boolean;
@@ -322,7 +323,18 @@ const AGENT_MODE_PRESETS: Record<
   now: { sortMode: 'fairness', openNow: true },
 };
 
-export function AppProvider({ children }: { children: ReactNode }) {
+const MapsSdkLoader = lazy(() => import('../components/MapsSdkLoader'));
+
+export function AppProvider({
+  children,
+  loadMaps,
+}: {
+  children: ReactNode;
+  /** Whether the current route needs the Google Maps SDK. Once loaded it
+   *  stays loaded (the script can't be unloaded), so navigating to a
+   *  map-free route afterwards doesn't flip isSdkLoaded back. */
+  loadMaps: boolean;
+}) {
   const { t } = useI18n();
   const [addressA, setAddressA] = useState(() => {
     return new URLSearchParams(window.location.search).get('a') ?? '';
@@ -333,6 +345,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [addressC, setAddressC] = useState(() => {
     return new URLSearchParams(window.location.search).get('c') ?? '';
   });
+  /* The address drafts change on every keystroke, so they live in their
+   * own context (AddressDraftContext) instead of the main value — putting
+   * them there re-rendered every useApp() consumer (map, list, each card)
+   * per keypress. Callbacks that need the current drafts read this ref so
+   * they stay referentially stable. */
+  const addressDraftRef = useRef({ a: addressA, b: addressB, c: addressC });
+  addressDraftRef.current = { a: addressA, b: addressB, c: addressC };
+  const addressDraft = useMemo<AddressDraftValue>(
+    () => ({ addressA, addressB, addressC, setAddressA, setAddressB, setAddressC }),
+    [addressA, addressB, addressC],
+  );
   const [locationA, setLocationA] = useState<Location | null>(null);
   const [locationB, setLocationB] = useState<Location | null>(null);
   const [locationC, setLocationC] = useState<Location | null>(null);
@@ -432,11 +455,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Place.searchNearby are all usable before (and independent of) the
   // visible <Map> mounting. Without this, the pre-search inline layout has
   // no SDK loaded → autocomplete stays empty and any kicked-off search
-  // dies with 'Map not loaded yet'.
-  const { isLoaded: isSdkLoaded, loadError: sdkLoadError } = useJsApiLoader({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-    libraries: GOOGLE_MAPS_LIBRARIES,
-  });
+  // dies with 'Map not loaded yet'. Only routes that pass loadMaps mount
+  // the (lazy) loader; see MapsSdkLoader.
+  const [sdkStatus, setSdkStatus] = useState<{
+    isLoaded: boolean;
+    loadError: Error | undefined;
+  }>({ isLoaded: false, loadError: undefined });
+  const isSdkLoaded = sdkStatus.isLoaded;
+  const sdkLoadError = sdkStatus.loadError;
+  const handleSdkStatus = useCallback(
+    (next: { isLoaded: boolean; loadError: Error | undefined }) => {
+      setSdkStatus((prev) =>
+        prev.isLoaded === next.isLoaded && prev.loadError === next.loadError ? prev : next,
+      );
+    },
+    [],
+  );
 
   // Geocoder needs the SDK loaded but doesn't need a map instance, so
   // create it as soon as the SDK is ready. Search functions check this ref
@@ -1007,12 +1041,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const findMeetupSpot = useCallback(async () => {
-    if (!addressA.trim() || !addressB.trim()) {
+    const { a, b, c } = addressDraftRef.current;
+    if (!a.trim() || !b.trim()) {
       setError(t('errors.bothAddresses'));
       return;
     }
-    await searchWithAddresses(addressA, addressB, addressC);
-  }, [addressA, addressB, addressC, searchWithAddresses, t]);
+    await searchWithAddresses(a, b, c);
+  }, [searchWithAddresses, t]);
 
   const searchAround = useCallback(
     async (center: { lat: number; lng: number }) => {
@@ -1182,10 +1217,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPendingWidenResearch(false);
     if (searchMode === 'nearby' && midpoint) {
       void searchAround(midpoint);
-    } else if (addressA.trim() && addressB.trim()) {
+    } else if (addressDraftRef.current.a.trim() && addressDraftRef.current.b.trim()) {
       void findMeetupSpot();
     }
-  }, [pendingWidenResearch, searchMode, midpoint, addressA, addressB, searchAround, findMeetupSpot]);
+  }, [pendingWidenResearch, searchMode, midpoint, searchAround, findMeetupSpot]);
 
   const canWidenSearch =
     searchRadiusMeters < SEARCH_RADIUS_MAX_M || searchMinRating > SEARCH_RATING_MIN;
@@ -1267,12 +1302,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSearchOpenNow,
       recentSearches,
       addressTemplates,
-      addressA,
-      addressB,
-      addressC,
-      setAddressA,
-      setAddressB,
-      setAddressC,
       setSearchMinRating,
       setSearchRadiusMeters,
       setSearchKeyword,
@@ -1332,9 +1361,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       searchOpenNow,
       recentSearches,
       addressTemplates,
-      addressA,
-      addressB,
-      addressC,
       setSearchPlaceCategory,
       widenSearchParams,
       widenAndResearch,
@@ -1365,7 +1391,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      <AddressDraftContext.Provider value={addressDraft}>
+        {loadMaps || isSdkLoaded ? (
+          <Suspense fallback={null}>
+            <MapsSdkLoader onStatus={handleSdkStatus} />
+          </Suspense>
+        ) : null}
+        {children}
+      </AddressDraftContext.Provider>
+    </AppContext.Provider>
+  );
+}
+
+interface AddressDraftValue {
+  addressA: string;
+  addressB: string;
+  /** Optional 3rd party. Empty string when 2-person mode. */
+  addressC: string;
+  setAddressA: (address: string) => void;
+  setAddressB: (address: string) => void;
+  setAddressC: (address: string) => void;
+}
+
+const AddressDraftContext = createContext<AddressDraftValue | null>(null);
+
+/** The in-progress address inputs. Only the search form should read these;
+ *  anything describing the *last search* should use locationA/B/C. */
+export function useAddressDraft() {
+  const context = useContext(AddressDraftContext);
+  if (!context) {
+    throw new Error('useAddressDraft must be used within an AppProvider');
+  }
+  return context;
 }
 
 export function useApp() {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, RefObject } from 'react';
-import { useApp } from '../context/AppContext';
+import { useAddressDraft, useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { RichText } from './RichText';
 import {
@@ -11,13 +11,9 @@ import styles from './LocationInput.module.css';
 
 export function LocationInput() {
   const { t, locale } = useI18n();
+  const { addressA, addressB, addressC, setAddressA, setAddressB, setAddressC } =
+    useAddressDraft();
   const {
-    addressA,
-    addressB,
-    addressC,
-    setAddressA,
-    setAddressB,
-    setAddressC,
     findMeetupSpot,
     searchWithAddresses,
     recentSearches,

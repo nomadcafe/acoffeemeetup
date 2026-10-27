@@ -55,7 +55,7 @@ function defaultScheduledAt(): number {
  */
 export function ProposeButton({ shop }: Props) {
   const { t } = useI18n();
-  const { coffeeShops, addressA, addressB, addressC, agentMode } = useApp();
+  const { coffeeShops, locationA, locationB, locationC, agentMode } = useApp();
   const { data: session } = useSession();
   const [flash, setFlash] = useState<Flash>('idle');
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -93,7 +93,11 @@ export function ProposeButton({ shop }: Props) {
         lng: s.lng,
       }));
 
-    const addresses = [addressA, addressB, addressC].filter((a) => a.trim().length > 0);
+    // The searched addresses, not the live input drafts — the user may have
+    // started editing the form since these results came back.
+    const addresses = [locationA, locationB, locationC]
+      .map((l) => l?.address ?? '')
+      .filter((a) => a.trim().length > 0);
     const scheduledAt = defaultScheduledAt();
 
     try {
