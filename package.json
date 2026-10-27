@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -b && tsc -p functions --noEmit",
     "preview": "vite preview",
-    "pages:dev": "vite & VITE_PID=$!; wrangler pages dev --proxy 5173; kill $VITE_PID"
+    "pages:dev": "wrangler pages dev --port 8788 & WRANGLER_PID=$!; vite; kill $WRANGLER_PID"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.29",
