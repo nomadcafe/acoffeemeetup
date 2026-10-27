@@ -9,7 +9,7 @@
   position: relative;
   margin: 0 auto;
   max-width: 1280px;
-  padding: 1rem 0 2rem;
+  padding: 0.75rem 0 1rem;
   isolation: isolate;
 }
 
@@ -65,7 +65,7 @@
 }
 
 .lead {
-  margin: 0 0 1.5rem;
+  margin: 0;
   max-width: 30rem;
   font-size: 1rem;
   color: var(--ac-text-muted);
@@ -73,10 +73,10 @@
 }
 
 @media (min-width: 768px) {
-  .wrap { padding: 2rem 0 3rem; }
+  .wrap { padding: 1.5rem 0 1.5rem; }
   .eyebrow { font-size: 0.78rem; margin-bottom: 1.1rem; }
   .title { font-size: 4rem; margin-bottom: 1.2rem; }
-  .lead { font-size: 1.15rem; margin-bottom: 2rem; }
+  .lead { font-size: 1.15rem; margin-bottom: 0.5rem; }
 }
 
 @media (min-width: 1024px) {
@@ -95,7 +95,7 @@
    * column hosts the AI-agent mock. */
   display: grid;
   grid-template-columns: 1fr;
-  gap: 2rem;
+  gap: 1rem;
   align-items: center;
 }
 
@@ -128,14 +128,18 @@
 
 /* ────── MockAgent SVG (hero visual) ────── */
 
+/* Sized so the search form starts within the first screen. The visual is
+ * illustration, not action: at its old size (up to 680px wide → ~400px
+ * tall) it set the hero's height on desktop and pushed the first address
+ * input below the fold on both a 1440×900 laptop and a phone. */
 .mockAgent {
   width: 100%;
-  max-width: 600px;
+  max-width: 260px;
   border-radius: 18px;
 }
 
-@media (min-width: 1024px) {
-  .mockAgent { max-width: 680px; }
+@media (min-width: 768px) {
+  .mockAgent { max-width: 520px; }
 }
 
 @keyframes cafeGlow {
