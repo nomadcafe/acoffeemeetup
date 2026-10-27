@@ -114,7 +114,7 @@ export const messages: MessageDict = {
   'location.swap': 'AとBを入れ替え',
 
 
-  'hero.samplesTitle': 'サンプル検索を試す：',
+  'hero.samplesTitle': '例',
   'hero.samplesLabel': 'サンプル検索',
 
   'list.loadingCoffee': 'カフェを探しています…',
@@ -123,7 +123,7 @@ export const messages: MessageDict = {
   'list.emptyMeetup': '条件に合う高評価の場所が見つかりませんでした。',
   'list.emptyHint': '近い場所にする、検索半径を広げる、最低評価を下げる、などを試してください。',
   'list.emptyWidenAction': '検索条件を広げる',
-  'list.nearMe': '近くの高評価カフェを表示 ☕',
+  'list.nearMe': '近くの高評価カフェを探す',
   'list.nearMeLoading': '現在地を取得中…',
   'list.nearMeUnavailable': '現在地を取得できませんでした。上で出発地を入力してください。',
   'list.nearMePermissionDenied': '位置情報がブロックされています。ブラウザのアドレスバーの鍵アイコンから許可するか、上で出発地を入力してください。',
@@ -554,8 +554,8 @@ export const messages: MessageDict = {
   'showcase.eyebrowAi': 'AI 搭載',
   'showcase.eyebrowFree': '無料',
   'showcase.eyebrowOpenSource': 'オープンソース',
-  'showcase.title': 'ACoffee とは？',
-  'showcase.lead': '待ち合わせ場所を AI が選ぶエージェントと、その周辺の機能をぜんぶ。',
+  'showcase.title': 'ふたりの真ん中で、いいコーヒーを。',
+  'showcase.lead': '住所をふたつ入れるだけ。どちらにも公平で、評価の高いカフェを選びます。',
   'showcase.demoBadge': '公平な選択',
   'showcase.demoAria': '3 人の位置から 1 つのカフェに線が集まる図',
   'profile.topShopsTitle': 'よく行くカフェ',

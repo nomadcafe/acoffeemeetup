@@ -1,27 +1,34 @@
 .wrap {
-  margin: 0.9rem auto 0;
-  max-width: 560px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.4rem;
 }
 
+/* Text-link weight: an alternative way in, not a competing primary. */
 .button {
-  padding: 0.55rem 1rem;
-  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--ac-accent);
-  background: var(--ac-surface);
-  border: 1px solid var(--ac-border-strong);
-  border-radius: 9px;
+  color: var(--ac-text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--ac-radius-sm);
+  text-decoration: underline;
+  text-decoration-color: var(--ac-border-strong);
+  text-underline-offset: 0.25em;
   cursor: pointer;
-  transition: background var(--ac-motion-fast), border-color var(--ac-motion-fast), color var(--ac-motion-fast);
+  transition: text-decoration-color var(--ac-motion-fast);
 }
 
 .button:hover:not(:disabled) {
-  background: var(--ac-surface-tinted);
-  border-color: var(--ac-accent);
+  text-decoration-color: currentColor;
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: var(--ac-focus-ring);
 }
 
 .button:disabled {

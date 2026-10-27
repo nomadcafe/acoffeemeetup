@@ -56,10 +56,14 @@
    * as "circa 2021" now and was the main "dated" signal on the page. */
   margin: 0 0 0.85rem;
   font-family: var(--ac-font-display);
-  font-size: 2.6rem;
+  font-size: 2.4rem;
   font-weight: 800;
-  letter-spacing: -0.045em;
-  line-height: 0.95;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+  /* Even line lengths for a two-line headline; phrase-aware breaks keep
+   * Japanese from splitting mid-word where supported. */
+  text-wrap: balance;
+  word-break: auto-phrase;
   font-variation-settings: 'opsz' 60;
   color: var(--ac-text);
 }
@@ -75,16 +79,16 @@
 @media (min-width: 768px) {
   .wrap { padding: 1.5rem 0 1.5rem; }
   .eyebrow { font-size: 0.78rem; margin-bottom: 1.1rem; }
-  .title { font-size: 4rem; margin-bottom: 1.2rem; }
+  .title { font-size: 3.25rem; margin-bottom: 1.1rem; }
   .lead { font-size: 1.15rem; margin-bottom: 0.5rem; }
 }
 
 @media (min-width: 1024px) {
-  .title { font-size: 5rem; }
+  .title { font-size: 3.9rem; }
 }
 
 @media (min-width: 1280px) {
-  .title { font-size: 5.5rem; }
+  .title { font-size: 4.4rem; }
 }
 
 /* ────── Hero block (text + marquee visual) ────── */
@@ -107,21 +111,23 @@
 }
 
 .heroVisual {
-  display: flex;
+  /* Phones: headline + form is the whole first screen; the illustration
+   * only earns its space beside the text on wider layouts. */
+  display: none;
   align-items: center;
   justify-content: center;
 }
 
 @media (min-width: 768px) {
   .hero {
-    grid-template-columns: 5fr 6fr;
+    grid-template-columns: 1.3fr 1fr;
     gap: 2.5rem;
   }
+  .heroVisual { display: flex; }
 }
 
 @media (min-width: 1024px) {
   .hero {
-    grid-template-columns: 1fr 1.2fr;
     gap: 3.5rem;
   }
 }

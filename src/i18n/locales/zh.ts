@@ -111,7 +111,7 @@ export const messages: MessageDict = {
   'location.swap': '交换 A 和 B',
 
 
-  'hero.samplesTitle': '试一下示例搜索：',
+  'hero.samplesTitle': '试试',
   'hero.samplesLabel': '示例搜索',
 
   'list.loadingCoffee': '正在查找咖啡好店…',
@@ -120,7 +120,7 @@ export const messages: MessageDict = {
   'list.emptyMeetup': '附近没有找到符合条件的高评分地点。',
   'list.emptyHint': '可尝试让两地更近、扩大搜索半径或降低最低评分。',
   'list.emptyWidenAction': '扩大搜索范围',
-  'list.nearMe': '显示附近高评价的咖啡店 ☕',
+  'list.nearMe': '或者，找附近的高分咖啡馆',
   'list.nearMeLoading': '正在获取你的位置…',
   'list.nearMeUnavailable': '无法获取你的位置，请在上方输入起点。',
   'list.nearMePermissionDenied': '位置访问已被禁用。请从浏览器地址栏的锁形图标重新授权，或在上方输入起点。',
@@ -546,8 +546,8 @@ export const messages: MessageDict = {
   'showcase.eyebrowAi': 'AI 驱动',
   'showcase.eyebrowFree': '免费',
   'showcase.eyebrowOpenSource': '开源',
-  'showcase.title': 'ACoffee 是什么',
-  'showcase.lead': '一个帮你们挑见面咖啡店的 AI 代理，以及围绕这杯咖啡的所有功能。',
+  'showcase.title': '在两人中间，喝一杯好咖啡。',
+  'showcase.lead': '输入两个地址，ACoffee 帮你们挑一家评分高、对双方都公平的咖啡馆。',
   'showcase.demoBadge': '公平之选',
   'showcase.demoAria': '示意图：三个出发点的连线汇聚到中间的一家咖啡店',
   'profile.topShopsTitle': '常去咖啡店',
