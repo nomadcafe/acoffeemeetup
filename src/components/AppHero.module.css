@@ -7,6 +7,11 @@
    * own .wrap so the section still has presence without the seam. */
   background: var(--ac-page-bg);
   padding: 1.5rem 1rem 1.25rem;
+  /* The showcase glow (.wrap::before) bleeds 10vw past its box on purpose;
+   * clip it here so it can't widen the page on phones (it made the whole
+   * layout viewport ~413px wide at 390px, with sideways scroll). `clip`
+   * rather than `hidden` so this doesn't become a scroll container. */
+  overflow-x: clip;
 }
 
 .inner {
