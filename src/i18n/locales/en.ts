@@ -570,8 +570,6 @@ export const messages: MessageDict = {
   'showcase.eyebrowOpenSource': 'Open Source',
   'showcase.title': 'Meet halfway, over great coffee.',
   'showcase.lead': 'Enter two addresses. ACoffee picks a well-rated café that’s fair for both of you.',
-  'showcase.demoBadge': 'Fair pick',
-  'showcase.demoAria': 'Diagram: three party locations converging on a single café',
   'profile.topShopsTitle': 'Favourite cafés',
   'profile.shopVisits': '{{count}} visits',
   'profile.bookTitle': 'Book a coffee',

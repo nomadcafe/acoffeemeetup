@@ -91,73 +91,28 @@
   .title { font-size: 4.4rem; }
 }
 
-/* ────── Hero block (text + marquee visual) ────── */
+/* ────── Hero block ────── */
 
+/* Centred on the same axis as the search form below, so the eye drops
+ * straight from the headline into the first input. */
 .hero {
-  /* Mobile: stacked. Desktop: text on the left, marquee visual on the
-   * right. The text column carries the H1 + lead + CTA; the visual
-   * column hosts the AI-agent mock. */
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  align-items: center;
+  display: flex;
+  justify-content: center;
 }
 
 .heroText {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-}
-
-.heroVisual {
-  /* Phones: headline + form is the whole first screen; the illustration
-   * only earns its space beside the text on wider layouts. */
-  display: none;
   align-items: center;
-  justify-content: center;
+  text-align: center;
+  max-width: 46rem;
 }
 
-@media (min-width: 768px) {
-  .hero {
-    grid-template-columns: 1.3fr 1fr;
-    gap: 2.5rem;
-  }
-  .heroVisual { display: flex; }
+.title {
+  /* Caps the measure so the headline balances into two lines. */
+  max-width: 14em;
 }
 
-@media (min-width: 1024px) {
-  .hero {
-    gap: 3.5rem;
-  }
-}
-
-/* ────── MockAgent SVG (hero visual) ────── */
-
-/* Sized so the search form starts within the first screen. The visual is
- * illustration, not action: at its old size (up to 680px wide → ~400px
- * tall) it set the hero's height on desktop and pushed the first address
- * input below the fold on both a 1440×900 laptop and a phone. */
-.mockAgent {
-  width: 100%;
-  max-width: 260px;
-  border-radius: 18px;
-}
-
-@media (min-width: 768px) {
-  .mockAgent { max-width: 520px; }
-}
-
-@keyframes cafeGlow {
-  0%, 100% { transform: scale(1); opacity: 0.92; }
-  50% { transform: scale(1.08); opacity: 1; }
-}
-
-.mockAgent circle[fill='url(#ac-cafe-glow)'] {
-  transform-origin: 240px 150px;
-  animation: cafeGlow 3.2s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mockAgent circle[fill='url(#ac-cafe-glow)'] { animation: none; }
+.lead {
+  margin-inline: auto;
 }

@@ -555,8 +555,6 @@ export const messages: MessageDict = {
   'showcase.eyebrowOpenSource': 'オープンソース',
   'showcase.title': 'ふたりの真ん中で、いいコーヒーを。',
   'showcase.lead': '住所をふたつ入れるだけ。どちらにも公平で、評価の高いカフェを選びます。',
-  'showcase.demoBadge': '公平な選択',
-  'showcase.demoAria': '3 人の位置から 1 つのカフェに線が集まる図',
   'profile.topShopsTitle': 'よく行くカフェ',
   'profile.shopVisits': '{{count}} 回',
   'profile.bookTitle': 'コーヒーを誘う',
