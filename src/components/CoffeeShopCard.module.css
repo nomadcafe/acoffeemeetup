@@ -208,8 +208,23 @@
 }
 
 .stars {
-  color: #ffc107;
+  position: relative;
+  display: inline-block;
   font-size: 0.9rem;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.starsBase {
+  color: var(--ac-border-strong);
+}
+
+.starsFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  overflow: hidden;
+  color: #f2b01e;
 }
 
 .ratingValue {

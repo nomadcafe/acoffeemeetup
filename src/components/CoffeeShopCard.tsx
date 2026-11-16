@@ -39,12 +39,17 @@ function formatDuration(seconds: number): string {
   return rem === 0 ? `${hours} hr` : `${hours} hr ${rem} min`;
 }
 
-function renderStars(rating: number): string {
-  const fullStars = Math.floor(rating);
-  const hasHalf = rating % 1 >= 0.5;
-  let stars = '★'.repeat(fullStars);
-  if (hasHalf) stars += '½';
-  return stars;
+/** Five stars with a gold overlay clipped to the exact rating, so 4.8
+ *  reads as nearly five rather than "4½". Decorative — the numeric value
+ *  sits right beside it. */
+function Stars({ rating }: { rating: number }) {
+  const pct = Math.max(0, Math.min(100, (rating / 5) * 100));
+  return (
+    <span className={styles.stars} aria-hidden>
+      <span className={styles.starsBase}>★★★★★</span>
+      <span className={styles.starsFill} style={{ width: `${pct}%` }}>★★★★★</span>
+    </span>
+  );
 }
 
 type SummaryState =
@@ -278,7 +283,7 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
 
       <div className={styles.details}>
         <div className={styles.rating}>
-          <span className={styles.stars}>{renderStars(shop.rating)}</span>
+          <Stars rating={shop.rating} />
           <span className={styles.ratingValue}>{shop.rating.toFixed(1)}</span>
           <span className={styles.reviews}>({t('card.reviews', { count: shop.userRatingsTotal })})</span>
         </div>
