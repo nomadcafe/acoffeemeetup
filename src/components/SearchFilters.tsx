@@ -12,6 +12,7 @@ import {
   SEARCH_RATING_MAX,
   SEARCH_RATING_MIN,
 } from '../utils/places';
+import { formatMeetAt } from '../utils/openingHours';
 import styles from './SearchFilters.module.css';
 
 const CATEGORY_LABEL_KEY: Record<PlaceSearchCategory, string> = {
@@ -50,7 +51,7 @@ const chevron = (open: boolean, className: string) => (
 );
 
 export function SearchFilters({ variant = 'panel' }: SearchFiltersProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const filtersHeadingId = useId();
   const filtersPanelId = useId();
   const widenHintId = useId();
@@ -68,6 +69,8 @@ export function SearchFilters({ variant = 'panel' }: SearchFiltersProps) {
     searchSortMode,
     searchOpenNow,
     setSearchOpenNow,
+    meetAt,
+    setMeetAt,
     widenSearchParams,
     isLoading,
     searchMode,
@@ -97,8 +100,11 @@ export function SearchFilters({ variant = 'panel' }: SearchFiltersProps) {
   if (searchSortMode === 'fairness') {
     summaryParts.push(t('filters.sortFairness'));
   }
+  if (meetAt) {
+    summaryParts.push(formatMeetAt(meetAt, locale));
+  }
   if (searchOpenNow) {
-    summaryParts.push(t('filters.openNowShort'));
+    summaryParts.push(meetAt ? t('filters.openAtMeetShort') : t('filters.openNowShort'));
   }
   const summary = summaryParts.join(' · ');
 
@@ -109,7 +115,8 @@ export function SearchFilters({ variant = 'panel' }: SearchFiltersProps) {
     Number(searchMinRating !== DEFAULT_MIN_RATING) +
     Number(searchRadiusMeters !== DEFAULT_RADIUS_M) +
     Number(trimmedKeyword !== '') +
-    Number(searchOpenNow);
+    Number(searchOpenNow) +
+    Number(!!meetAt);
 
   const panelBody = (
     <>
@@ -197,6 +204,34 @@ export function SearchFilters({ variant = 'panel' }: SearchFiltersProps) {
           Vibe / Quiet / Now). */}
 
       <div className={styles.field}>
+        <label htmlFor="searchMeetAt" className={styles.keywordLabel}>
+          {t('filters.meetAt')}
+        </label>
+        <div className={styles.meetAtRow}>
+          <input
+            id="searchMeetAt"
+            type="datetime-local"
+            className={styles.keywordInput}
+            value={meetAt ?? ''}
+            step={900}
+            onChange={(e) => setMeetAt(e.target.value || null)}
+            disabled={isLoading}
+          />
+          {meetAt ? (
+            <button
+              type="button"
+              className={styles.meetAtClear}
+              onClick={() => setMeetAt(null)}
+              disabled={isLoading}
+            >
+              {t('filters.meetAtClear')}
+            </button>
+          ) : null}
+        </div>
+        <p className={styles.hint}>{t('filters.meetAtHint')}</p>
+      </div>
+
+      <div className={styles.field}>
         <label className={styles.toggleRow}>
           <input
             type="checkbox"
@@ -205,9 +240,13 @@ export function SearchFilters({ variant = 'panel' }: SearchFiltersProps) {
             onChange={(e) => setSearchOpenNow(e.target.checked)}
             disabled={isLoading}
           />
-          <span className={styles.toggleLabel}>{t('filters.openNow')}</span>
+          <span className={styles.toggleLabel}>
+            {meetAt ? t('filters.openAtMeet') : t('filters.openNow')}
+          </span>
         </label>
-        <p className={styles.hint}>{t('filters.openNowHint')}</p>
+        <p className={styles.hint}>
+          {meetAt ? t('filters.openAtMeetHint') : t('filters.openNowHint')}
+        </p>
       </div>
 
       <div className={styles.field}>

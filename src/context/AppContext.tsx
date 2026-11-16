@@ -24,6 +24,7 @@ import { useI18n } from './I18nContext';
 import { useStarredShops } from '../hooks/useStarredShops';
 import { useVisitedShops } from '../hooks/useVisitedShops';
 import { geocodeParties } from '../utils/geocoding';
+import { isOpenAt, meetAtWallTime } from '../utils/openingHours';
 import { calculateMidpoint, centroid } from '../utils/midpoint';
 import { pickAgentModeByTime } from '../utils/pickAgentModeByTime';
 import { track } from '../utils/analytics';
@@ -104,6 +105,7 @@ interface AppContextType extends AppState {
    *  still override individual filters in the advanced panel afterwards. */
   setAgentMode: (mode: AgentMode) => void;
   setSearchOpenNow: (value: boolean) => void;
+  setMeetAt: (value: string | null) => void;
   updateStarredNote: (shopId: string, note: string) => void;
   addAddressTemplate: (address: string) => void;
   removeAddressTemplate: (address: string) => void;
@@ -405,6 +407,10 @@ export function AppProvider({
   const [searchOpenNow, setSearchOpenNow] = useState<boolean>(() => {
     return new URLSearchParams(window.location.search).get('open') === '1';
   });
+  const [meetAt, setMeetAt] = useState<string | null>(() => {
+    const raw = new URLSearchParams(window.location.search).get('at');
+    return raw && meetAtWallTime(raw) ? raw : null;
+  });
   /* Agent default. URL `?m=` is treated as a manual override (sticky
    * across reloads); absent / invalid → auto-pick by local time of day
    * so the AI agent has actually decided something at boot. The
@@ -443,6 +449,8 @@ export function AppProvider({
     setAgentModeIsAuto(false);
     setSearchSortMode(preset.sortMode);
     if (preset.openNow !== undefined) setSearchOpenNow(preset.openNow);
+    // The "Now" mode means right now, not the planned meeting time.
+    if (preset.openNow) setMeetAt(null);
     if (preset.minRating !== undefined) setSearchMinRating(preset.minRating);
   }, []);
   const [searchMode, setSearchMode] = useState<SearchMode>('meetup');
@@ -857,10 +865,17 @@ export function AppProvider({
 
   // Re-sort reactively whenever shops, stars, or sort mode change — no re-search needed.
   const partyCount = (locationA ? 1 : 0) + (locationB ? 1 : 0) + (locationC ? 1 : 0);
-  const coffeeShops = useMemo(
-    () => sortShops(rawShops, starredShopIds, searchSortMode, partyCount),
-    [rawShops, starredShopIds, searchSortMode, partyCount],
-  );
+  // Open/closed is re-judged client-side (no re-search): at the planned
+  // meeting time when one is set, otherwise the café-clock "now" from the
+  // search. The open filter is strict — unknown hours are dropped too.
+  const coffeeShops = useMemo(() => {
+    const meetWall = meetAt ? meetAtWallTime(meetAt) : null;
+    let list = meetWall
+      ? rawShops.map((s) => ({ ...s, isOpen: isOpenAt(s.openingPeriods, meetWall) }))
+      : rawShops;
+    if (searchOpenNow) list = list.filter((s) => s.isOpen === true);
+    return sortShops(list, starredShopIds, searchSortMode, partyCount);
+  }, [rawShops, starredShopIds, searchSortMode, partyCount, meetAt, searchOpenNow]);
 
   const setSearchPlaceCategory = useCallback((value: PlaceSearchCategory) => {
     setSearchPlaceCategoryState(value);
@@ -945,8 +960,7 @@ export function AppProvider({
           searchMinRating,
           searchRadiusMeters,
           searchPlaceCategory,
-          searchKeyword,
-          searchOpenNow
+          searchKeyword
         );
         if (isStale()) return;
         // Enrich the top candidates with real transit ETAs from each
@@ -1033,7 +1047,7 @@ export function AppProvider({
         if (!isStale()) setIsLoading(false);
       }
     },
-    [searchMinRating, searchRadiusMeters, searchPlaceCategory, searchKeyword, searchOpenNow, searchSortMode, t]
+    [searchMinRating, searchRadiusMeters, searchPlaceCategory, searchKeyword, searchSortMode, t]
   );
 
   const findMeetupSpot = useCallback(async () => {
@@ -1081,8 +1095,7 @@ export function AppProvider({
           searchMinRating,
           searchRadiusMeters,
           searchPlaceCategory,
-          searchKeyword,
-          searchOpenNow
+          searchKeyword
         );
         if (isStale()) return;
         setRawShops(shops);
@@ -1123,7 +1136,7 @@ export function AppProvider({
         if (!isStale()) setIsLoading(false);
       }
     },
-    [isSdkLoaded, searchMinRating, searchRadiusMeters, searchPlaceCategory, searchKeyword, searchOpenNow, t]
+    [isSdkLoaded, searchMinRating, searchRadiusMeters, searchPlaceCategory, searchKeyword, t]
   );
 
   // Auto-search from URL params once the SDK is loaded. Used to wait for
@@ -1155,13 +1168,14 @@ export function AppProvider({
     setOrDelete('cat', searchPlaceCategory, searchPlaceCategory === 'cafe');
     setOrDelete('sort', searchSortMode, searchSortMode === DEFAULT_SORT_MODE);
     setOrDelete('open', '1', !searchOpenNow);
+    setOrDelete('at', meetAt ?? '', !meetAt);
     setOrDelete('m', agentMode, agentMode === 'fair');
     const query = params.toString();
     const target = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
     if (target !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState({}, '', target);
     }
-  }, [searchRadiusMeters, searchMinRating, searchKeyword, searchPlaceCategory, searchSortMode, searchOpenNow, agentMode]);
+  }, [searchRadiusMeters, searchMinRating, searchKeyword, searchPlaceCategory, searchSortMode, searchOpenNow, meetAt, agentMode]);
 
   const addAddressTemplate = useCallback((address: string) => {
     const clean = address.trim();
@@ -1296,6 +1310,8 @@ export function AppProvider({
       searchMode,
       searchOpenNow,
       setSearchOpenNow,
+      meetAt,
+      setMeetAt,
       recentSearches,
       addressTemplates,
       setSearchMinRating,
@@ -1355,6 +1371,7 @@ export function AppProvider({
       setAgentMode,
       searchMode,
       searchOpenNow,
+      meetAt,
       recentSearches,
       addressTemplates,
       setSearchPlaceCategory,

@@ -24,7 +24,12 @@ export interface CoffeeShop {
   durationFromC?: number;
   /** Straight-line distance from the A–B midpoint (same point used as the Places search center). */
   distanceFromMidpoint?: number;
+  /** Open right now, on the café's own clock. */
   isOpen?: boolean;
+  /** Weekly hours in café-local wall time; absent when Google has none. */
+  openingPeriods?: import('../utils/openingHours').OpeningPeriod[];
+  /** The café's current UTC offset, for converting to/from its clock. */
+  utcOffsetMinutes?: number;
   /** From Places (New) `googleMapsURI` when requested; preferred for “open in Maps”. */
   googleMapsUri?: string;
 }
@@ -124,6 +129,9 @@ export interface AppState {
   searchMode: SearchMode;
   /** When true, hide results that are not currently open. */
   searchOpenNow: boolean;
+  /** Planned meeting time, café-local wall time ("2026-11-21T15:00"),
+   *  or null for "now". Drives open/closed on cards and the open filter. */
+  meetAt: string | null;
   recentSearches: RecentSearchItem[];
   addressTemplates: string[];
 }

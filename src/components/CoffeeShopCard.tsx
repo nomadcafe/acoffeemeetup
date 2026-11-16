@@ -11,6 +11,7 @@ import { useI18n } from '../context/I18nContext';
 import { formatRelativeTime } from '../utils/relativeTime';
 import { isToday } from '../utils/streak';
 import { fetchAiSummary, getCachedSummary } from '../utils/aiSummary';
+import { formatMeetAt } from '../utils/openingHours';
 import styles from './CoffeeShopCard.module.css';
 
 interface CoffeeShopCardProps {
@@ -67,6 +68,7 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
 }: CoffeeShopCardProps) {
   const { t, locale } = useI18n();
   const {
+    meetAt,
     isStarred,
     isVisited,
     visitCount,
@@ -380,7 +382,11 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
 
         {shop.isOpen !== undefined && (
           <span className={`${styles.openStatus} ${shop.isOpen ? styles.open : styles.closed}`}>
-            {shop.isOpen ? t('card.openNow') : t('card.closed')}
+            {meetAt
+              ? t(shop.isOpen ? 'card.openAt' : 'card.closedAt', { time: formatMeetAt(meetAt, locale) })
+              : shop.isOpen
+                ? t('card.openNow')
+                : t('card.closed')}
           </span>
         )}
       </div>

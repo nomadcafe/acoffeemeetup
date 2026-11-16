@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { meetAtInstant } from '../utils/openingHours';
 import type { CoffeeShop } from '../types';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
@@ -55,7 +56,7 @@ function defaultScheduledAt(): number {
  */
 export function ProposeButton({ shop }: Props) {
   const { t } = useI18n();
-  const { coffeeShops, locationA, locationB, locationC, agentMode } = useApp();
+  const { coffeeShops, locationA, locationB, locationC, agentMode, meetAt } = useApp();
   const { data: session } = useSession();
   const [flash, setFlash] = useState<Flash>('idle');
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -98,7 +99,10 @@ export function ProposeButton({ shop }: Props) {
     const addresses = [locationA, locationB, locationC]
       .map((l) => l?.address ?? '')
       .filter((a) => a.trim().length > 0);
-    const scheduledAt = defaultScheduledAt();
+    // A planned meeting time wins over the auto default, read on the
+    // café's clock; ignore it once it's in the past.
+    const planned = meetAt ? meetAtInstant(meetAt, shop.utcOffsetMinutes) : null;
+    const scheduledAt = planned != null && planned > Date.now() ? planned : defaultScheduledAt();
 
     try {
       const res = await fetch('/api/proposals', {

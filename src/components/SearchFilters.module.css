@@ -309,3 +309,34 @@
 @media (prefers-reduced-motion: reduce) {
   .inlineChevron { transition: none; }
 }
+
+.meetAtRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.meetAtRow .keywordInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.meetAtClear {
+  flex-shrink: 0;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0.25rem 0.1rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ac-text-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--ac-border-strong);
+  text-underline-offset: 0.22em;
+  cursor: pointer;
+}
+
+.meetAtClear:hover:not(:disabled) {
+  color: var(--ac-text);
+}

@@ -1,4 +1,5 @@
 import type { CoffeeShop, PlaceSearchCategory, SearchSortMode } from '../types';
+import { isOpenAt, periodsFromPlace, wallTimeAt } from './openingHours';
 import { calculateDistance } from './midpoint';
 import {
   isLikelyNetworkError,
@@ -37,45 +38,6 @@ function nameMatchesKeyword(displayName: string, keyword: string): boolean {
   return k.split(/\s+/).every((part) => part.length > 0 && name.includes(part));
 }
 
-function computeOpenNow(p: google.maps.places.Place): boolean | undefined {
-  // Places (New) `regularOpeningHours.periods` is a list of
-  // { open: { day, hour, minute }, close: { day, hour, minute } } entries;
-  // day is 0–6 (Sunday=0). Walk the periods and test whether "now" falls
-  // inside any of them. Return undefined when the hours are unknown so the
-  // UI can show "no status" rather than guessing.
-  try {
-    const periods = p.regularOpeningHours?.periods;
-    if (!periods || periods.length === 0) return undefined;
-    const now = new Date();
-    const nowDay = now.getDay();
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    for (const period of periods) {
-      const o = period.open;
-      const c = period.close;
-      if (!o) continue;
-      const openMin = (o.hour ?? 0) * 60 + (o.minute ?? 0);
-      // No close → interpreted by Google as 24h (from the open point).
-      if (!c) {
-        if (o.day === nowDay) return true;
-        continue;
-      }
-      const closeMin = (c.hour ?? 0) * 60 + (c.minute ?? 0);
-      // Same-day period.
-      if (o.day === c.day && o.day === nowDay && nowMin >= openMin && nowMin < closeMin) {
-        return true;
-      }
-      // Wraps past midnight (e.g. bar open Fri 18:00 → Sat 02:00).
-      if (o.day !== c.day) {
-        if (nowDay === o.day && nowMin >= openMin) return true;
-        if (nowDay === c.day && nowMin < closeMin) return true;
-      }
-    }
-    return false;
-  } catch {
-    return undefined;
-  }
-}
-
 function mapPlacesToCoffeeShops(
   places: google.maps.places.Place[],
   locationA: { lat: number; lng: number } | null,
@@ -94,6 +56,10 @@ function mapPlacesToCoffeeShops(
       const lng = p.location?.lng() ?? 0;
       const distanceFromMidpoint = calculateDistance(midpoint.lat, midpoint.lng, lat, lng);
       const gUri = p.googleMapsURI?.trim();
+      // Hours + the café's own UTC offset: open/closed is judged on the
+      // café's clock (now or a planned meeting time), not the browser's.
+      const openingPeriods = periodsFromPlace(p.regularOpeningHours?.periods);
+      const utcOffsetMinutes = p.utcOffsetMinutes ?? undefined;
       return {
         id: p.id,
         name: p.displayName ?? 'Unknown',
@@ -112,7 +78,9 @@ function mapPlacesToCoffeeShops(
           ? calculateDistance(locationC.lat, locationC.lng, lat, lng)
           : undefined,
         distanceFromMidpoint,
-        isOpen: computeOpenNow(p),
+        openingPeriods,
+        utcOffsetMinutes,
+        isOpen: isOpenAt(openingPeriods, wallTimeAt(Date.now(), utcOffsetMinutes)),
         googleMapsUri: gUri ? gUri : undefined,
       };
     })
@@ -129,6 +97,8 @@ const NEARBY_FIELDS: string[] = [
   'userRatingCount',
   'googleMapsURI',
   'regularOpeningHours',
+  // Same SKU tier as rating / hours, which this request already pays for.
+  'utcOffsetMinutes',
 ];
 
 /**
@@ -144,8 +114,7 @@ export async function searchCoffeeShops(
   minRating: number = 4.0,
   radiusMeters: number = 1200,
   placeCategory: PlaceSearchCategory = 'cafe',
-  keyword: string = '',
-  openNowOnly: boolean = false
+  keyword: string = ''
 ): Promise<{ shops: CoffeeShop[] }> {
   const radius = Math.min(50_000, Math.max(200, Math.round(radiusMeters)));
   const kw = keyword.trim();
@@ -186,10 +155,6 @@ export async function searchCoffeeShops(
       shops = shops.filter((s) => nameMatchesKeyword(s.name, kw));
     }
 
-    if (openNowOnly) {
-      // Strict: also drop places with unknown hours, not just the ones we know are closed.
-      shops = shops.filter((s) => s.isOpen === true);
-    }
 
     reportGoogleNetworkOk();
     return { shops };
