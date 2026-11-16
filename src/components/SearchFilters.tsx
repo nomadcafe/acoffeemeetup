@@ -96,9 +96,17 @@ export function SearchFilters() {
           ) : (
             <span className={styles.summarySpacer} aria-hidden />
           )}
-          <span className={styles.disclosureChevron} aria-hidden>
-            {filtersExpanded ? '▾' : '▸'}
-          </span>
+          <svg
+            className={styles.disclosureChevron}
+            data-open={filtersExpanded || undefined}
+            width={16}
+            height={16}
+            viewBox="0 0 16 16"
+            aria-hidden
+            focusable="false"
+          >
+            <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
       </h2>
 

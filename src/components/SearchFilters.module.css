@@ -65,12 +65,17 @@
 }
 
 .disclosureChevron {
-  font-size: 0.65rem;
-  color: #888;
-  line-height: 1;
-  width: 1rem;
-  text-align: center;
+  color: var(--ac-text-muted);
   flex-shrink: 0;
+  transition: transform var(--ac-motion-base);
+}
+
+.disclosureChevron[data-open] {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disclosureChevron { transition: none; }
 }
 
 .filtersPanel {

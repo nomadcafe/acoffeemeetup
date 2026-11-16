@@ -74,6 +74,18 @@
   font-size: 1rem;
   color: var(--ac-text-muted);
   line-height: 1.55;
+  /* Same CJK treatment as the headline: no mid-word splits ("評/価"),
+   * and no one-word orphan on the last line. */
+  text-wrap: pretty;
+  word-break: auto-phrase;
+}
+
+/* auto-phrase only segments Japanese; for Chinese, break at punctuation
+ * and spaces instead, with anywhere as the overflow fallback. */
+:global(html:lang(zh)) .title,
+:global(html:lang(zh)) .lead {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 @media (min-width: 768px) {
