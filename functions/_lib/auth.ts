@@ -1,10 +1,11 @@
+import type { SpendCapEnv } from './spendCap';
 import { betterAuth } from 'better-auth';
 import { magicLink } from 'better-auth/plugins';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { Resend } from 'resend';
 import { getDb, type DbEnv } from './db';
 
-export interface AuthEnv extends DbEnv {
+export interface AuthEnv extends DbEnv, SpendCapEnv {
   AUTH_SECRET: string;
   AUTH_BASE_URL: string;
   RESEND_API_KEY: string;

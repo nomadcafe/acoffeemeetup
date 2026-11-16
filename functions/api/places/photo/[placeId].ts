@@ -1,3 +1,4 @@
+import { reserveDailySpend } from '../../../_lib/spendCap';
 import { rejectCrossSite } from '../../../_lib/sameOrigin';
 import type { AuthEnv } from '../../../_lib/auth';
 import { jsonError } from '../../../_lib/jsonError';
@@ -86,6 +87,12 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ params, request, en
   // Slow path: pull from Google.
   const apiKey = env.GOOGLE_MAPS_SERVER_KEY ?? env.VITE_GOOGLE_MAPS_API_KEY;
   if (!apiKey) return jsonError('Google Maps key not configured', 503);
+
+  // Global daily ceiling on misses. Over budget the <img> just falls back
+  // to its placeholder; no-store so it retries tomorrow.
+  if (!(await reserveDailySpend(env, 'place_photo', 1))) {
+    return new Response(null, { status: 503, headers: { 'cache-control': 'no-store' } });
+  }
 
   // Step 1: Place Details with the photos field mask. We only need
   // photos[0].name — Google charges per request not per field.

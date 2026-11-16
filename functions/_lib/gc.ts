@@ -1,7 +1,7 @@
 import { and, eq, lt } from 'drizzle-orm';
 import type { AuthEnv } from './auth';
 import { getDb } from './db';
-import { bookingAttempts, bookings, proposals, verification } from './db/schema';
+import { apiSpend, bookingAttempts, bookings, proposals, verification } from './db/schema';
 
 /**
  * Periodic cleanup. Two tables grow without bound otherwise:
@@ -33,6 +33,7 @@ export async function runBookingGc(env: AuthEnv): Promise<{
   attemptLogDeleted: number;
   expiredProposalsDeleted: number;
   verificationDeleted: number;
+  spendRowsDeleted: number;
 }> {
   const db = getDb(env);
   const now = Date.now();
@@ -72,8 +73,17 @@ export async function runBookingGc(env: AuthEnv): Promise<{
     .where(lt(verification.expiresAt, new Date(now)))
     .returning({ id: verification.id });
 
+  // Spend counters are only read for today; keep a quarter for eyeballing
+  // trends with `wrangler d1 execute`. ISO dates compare as strings.
+  const spendBefore = new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const spendRes = await db
+    .delete(apiSpend)
+    .where(lt(apiSpend.day, spendBefore))
+    .returning({ day: apiSpend.day });
+
   return {
     unconfirmedDeleted: unconfirmedRes.length,
+    spendRowsDeleted: spendRes.length,
     attemptLogDeleted: attemptsRes.length,
     expiredProposalsDeleted: proposalsRes.length,
     verificationDeleted: verificationRes.length,

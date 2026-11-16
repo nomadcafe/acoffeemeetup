@@ -1,3 +1,4 @@
+import { reserveDailySpend } from './spendCap';
 import type { AuthEnv } from './auth';
 
 /**
@@ -18,7 +19,7 @@ export class GoogleMapsError extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly source: 'config' | 'geocode' | 'places' | 'network',
+    public readonly source: 'config' | 'geocode' | 'places' | 'network' | 'budget',
   ) {
     super(message);
     this.name = 'GoogleMapsError';
@@ -478,6 +479,10 @@ export async function computeRouteMatrix(
   const destIdx = destinations.map((_, j) => j).filter((j) => origins.some((_, i) => isMiss(i, j)));
 
   const key = requireKey(env);
+
+  if (!(await reserveDailySpend(env, 'routes_elements', originIdx.length * destIdx.length))) {
+    throw new GoogleMapsError('Daily Routes budget reached', 503, 'budget');
+  }
 
   const body = {
     origins: originIdx.map((i) => ({

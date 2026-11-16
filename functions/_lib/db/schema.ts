@@ -163,6 +163,22 @@ export const bookingAttempts = sqliteTable(
   }),
 );
 
+// Per-day usage counters for paid Google SKUs called from public,
+// unauthenticated proxies (Routes elements, Place Photo misses). One row
+// per (UTC day, sku); incremented atomically by _lib/spendCap.ts so a
+// global daily ceiling holds regardless of IP rotation or colo.
+export const apiSpend = sqliteTable(
+  'api_spend',
+  {
+    day: text('day').notNull(),
+    sku: text('sku').notNull(),
+    units: integer('units').notNull().default(0),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.day, t.sku] }),
+  }),
+);
+
 // Coffee bookings made through `acoffee.com/<username>`. The visitor isn't
 // necessarily an ACoffee user — only the organizer needs an account. We
 // store the visitor's address + lat/lng for the record (both for showing
