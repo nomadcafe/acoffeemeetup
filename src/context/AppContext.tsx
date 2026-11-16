@@ -23,7 +23,7 @@ import type {
 import { useI18n } from './I18nContext';
 import { useStarredShops } from '../hooks/useStarredShops';
 import { useVisitedShops } from '../hooks/useVisitedShops';
-import { geocodeAddress } from '../utils/geocoding';
+import { geocodeParties } from '../utils/geocoding';
 import { calculateMidpoint, centroid } from '../utils/midpoint';
 import { pickAgentModeByTime } from '../utils/pickAgentModeByTime';
 import { track } from '../utils/analytics';
@@ -914,13 +914,9 @@ export function AppProvider({
       track('search_submitted', { mode: 'meetup', parties: c ? 3 : 2 });
 
       try {
-        // Geocode 2 or 3 addresses in parallel.
-        const geocodePromises = [
-          geocodeAddress(a, geocoderRef.current),
-          geocodeAddress(b, geocoderRef.current),
-        ];
-        if (c) geocodePromises.push(geocodeAddress(c, geocoderRef.current));
-        const coords = await Promise.all(geocodePromises);
+        // Geocode 2 or 3 addresses; re-biases a mis-resolved one that
+        // lands far from the others.
+        const coords = await geocodeParties(c ? [a, b, c] : [a, b], geocoderRef.current);
         if (isStale()) return;
         const coordsA = coords[0];
         const coordsB = coords[1];

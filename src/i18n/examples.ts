@@ -32,7 +32,7 @@ export interface ExamplePair {
  */
 export const examplePairsByLocale: Record<Locale, ExamplePair[]> = {
   en: [
-    { emoji: '🤝', a: 'Times Square, New York', b: 'Central Park, New York', mode: 'fair' },
+    { emoji: '🤝', a: 'Times Square, New York, NY', b: 'Central Park, New York, NY', mode: 'fair' },
     { emoji: '✨', a: 'Ferry Building, San Francisco', b: 'Golden Gate Park, San Francisco', mode: 'vibe' },
   ],
   ja: [
