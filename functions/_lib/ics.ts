@@ -38,6 +38,15 @@ export interface BookingIcsInput {
   sequence?: number;
 }
 
+/* RFC 5545 §3.2: parameter values containing ':' ';' or ',' must be a
+ * DQUOTE'd string, and DQUOTE / control characters can't appear inside
+ * it. Backslash escaping is a TEXT-value rule and doesn't apply here —
+ * an unquoted "Bob:mailto:x@evil.com" would rewrite the address. */
+function icsParamValue(input: string): string {
+  // eslint-disable-next-line no-control-regex
+  return `"${input.replace(/["\x00-\x1f\x7f]/g, '')}"`;
+}
+
 /* RFC 5545 §3.3.11: backslash, comma, semicolon, and newline must be
  * escaped inside TEXT-typed property values. CR alone is rare on user
  * input but spelled out for completeness. */
@@ -132,9 +141,9 @@ export function buildBookingIcs(input: BookingIcsInput): string {
     foldLine(`SUMMARY:${escapeIcsText(summary)}`),
     foldLine(`LOCATION:${escapeIcsText(location)}`),
     foldLine(`DESCRIPTION:${escapeIcsText(description)}`),
-    foldLine(`ORGANIZER;CN=${escapeIcsText(input.hostHandle)}:mailto:${input.hostEmail}`),
+    foldLine(`ORGANIZER;CN=${icsParamValue(input.hostHandle)}:mailto:${input.hostEmail}`),
     foldLine(
-      `ATTENDEE;CN=${escapeIcsText(input.visitorName)};ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${input.visitorEmail}`,
+      `ATTENDEE;CN=${icsParamValue(input.visitorName)};ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${input.visitorEmail}`,
     ),
   ];
   if (input.googleMapsUri) {

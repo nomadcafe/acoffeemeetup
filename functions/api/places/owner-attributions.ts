@@ -1,3 +1,4 @@
+import { rejectCrossSite } from '../../_lib/sameOrigin';
 import { z } from 'zod';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { AuthEnv } from '../../_lib/auth';
@@ -26,7 +27,9 @@ import { rateLimit, rateLimitResponse } from '../../_lib/rateLimit';
  */
 
 const InputSchema = z.object({
-  placeIds: z.array(z.string().trim().min(1).max(200)).min(1).max(20),
+  // Same shape as the photo proxy's check: Google place ids only, so junk
+  // strings can't each burn a KV negative-cache write.
+  placeIds: z.array(z.string().regex(/^[A-Za-z0-9_-]{20,200}$/)).min(1).max(20),
 });
 
 interface Attribution {
@@ -54,6 +57,9 @@ const CACHE_PREFIX = 'owner:';
 const NEGATIVE_MARKER = '__none__';
 
 export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, waitUntil }) => {
+  const crossSite = rejectCrossSite(request);
+  if (crossSite) return crossSite;
+
   /* Per-IP rate limit. Each request fans out to up to 20 D1 SELECTs (the
    * KV negative cache absorbs popular cafes but a fresh-id flood would
    * still hammer D1). 60 requests per 10 minutes covers genuine search

@@ -1,3 +1,4 @@
+import { rejectCrossSite } from '../../_lib/sameOrigin';
 import { createDeepSeek } from '@ai-sdk/deepseek';
 import { generateText } from 'ai';
 import { z } from 'zod';
@@ -45,6 +46,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
     return jsonError('DEEPSEEK_API_KEY not configured', 500);
   }
 
+  // Same-origin only: the SPA is the sole caller, and an open endpoint is
+  // a free general-purpose LLM for any site that embeds it.
+  const crossSite = rejectCrossSite(request);
+  if (crossSite) return crossSite;
+
   let input: z.infer<typeof InputSchema>;
   try {
     input = InputSchema.parse(await request.json());
@@ -57,10 +63,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
   // Cache hit — return without touching the model or the rate limiter.
   const cached = await readSummaryCache(input.placeId, input.locale, inputHash);
   if (cached) {
-    return Response.json(
-      { summary: cached, cached: true },
-      { headers: ALLOW_CORS },
-    );
+    return Response.json({ summary: cached, cached: true });
   }
 
   const limit = await rateLimit(request, { waitUntil }, {
@@ -94,7 +97,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
         headers: {
           // Browser can also keep it around; server key is placeId+locale.
           'cache-control': 'public, max-age=2592000, s-maxage=2592000',
-          ...ALLOW_CORS,
         },
       },
     );
@@ -104,21 +106,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
   }
 };
 
-const ALLOW_CORS = { 'access-control-allow-origin': '*' } as const;
-
-export const onRequestOptions: PagesFunction = () =>
-  new Response(null, {
-    headers: {
-      'access-control-allow-origin': '*',
-      'access-control-allow-methods': 'POST, OPTIONS',
-      'access-control-allow-headers': 'content-type',
-      'access-control-max-age': '86400',
-    },
-  });
 
 function jsonError(message: string, status: number): Response {
-  return Response.json(
-    { error: message },
-    { status, headers: { 'access-control-allow-origin': '*' } },
-  );
+  return Response.json({ error: message }, { status });
 }

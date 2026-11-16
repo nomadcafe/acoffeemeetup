@@ -1,3 +1,4 @@
+import { rejectCrossSite } from '../../../_lib/sameOrigin';
 import type { AuthEnv } from '../../../_lib/auth';
 import { jsonError } from '../../../_lib/jsonError';
 import { rateLimit, rateLimitResponse } from '../../../_lib/rateLimit';
@@ -46,6 +47,9 @@ function r2KeyFor(placeId: string): string {
 export const onRequestGet: PagesFunction<AuthEnv> = async ({ params, request, env, waitUntil }) => {
   const placeId = typeof params.placeId === 'string' ? params.placeId : '';
   if (!PLACE_ID_RE.test(placeId)) return jsonError('Invalid place id', 400);
+
+  const crossSite = rejectCrossSite(request);
+  if (crossSite) return crossSite;
 
   if (!env.PLACE_PHOTOS || !env.PLACE_PHOTOS_PUBLIC_URL) {
     return jsonError('Place photo cache is not configured', 503);

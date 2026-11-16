@@ -1,3 +1,4 @@
+import { rejectCrossSite } from '../../_lib/sameOrigin';
 import { z } from 'zod';
 import type { AuthEnv } from '../../_lib/auth';
 import { jsonError } from '../../_lib/jsonError';
@@ -37,6 +38,9 @@ const InputSchema = z.object({
 });
 
 export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, waitUntil }) => {
+  const crossSite = rejectCrossSite(request);
+  if (crossSite) return crossSite;
+
   /* Per-IP rate limit. Each request fans out to Routes API at up to 40
    * elements / ~$0.20 (the schema caps origins×destinations to 5×8). A
    * scripted attacker without a cap could burn real money fast. 30
