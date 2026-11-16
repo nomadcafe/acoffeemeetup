@@ -4,6 +4,12 @@ import { getDb } from './_lib/db';
 import { user, visitedShops } from './_lib/db/schema';
 import { RESERVED_USERNAMES } from './_lib/username';
 import { rateLimit } from './_lib/rateLimit';
+import {
+  PREVIEW_COPY,
+  formatPreviewTime,
+  loadProposalPreview,
+  type PreviewLocale,
+} from './_lib/proposalPreview';
 
 /**
  * Root middleware that rewrites the SPA's static index.html for two
@@ -137,6 +143,9 @@ const PAGE_COPY: Record<StaticPage, Record<Locale, PageCopy>> = {
     },
   },
 };
+/** Proposal share links: `/p/<uuid>`, optionally locale-prefixed (the
+ *  sender's language, so the preview reads in it). */
+const PROPOSAL_PATH_RE = /^\/(?:(en|ja|zh)\/)?p\/([0-9a-f-]{36})\/?$/i;
 const PAGE_PATH_RE = /^\/(?:(en|ja|zh)\/)?(updatelog|passport)\/?$/;
 const LOCALES: Locale[] = ['en', 'ja', 'zh'];
 
@@ -363,6 +372,54 @@ export const onRequest: PagesFunction<AuthEnv> = async (context) => {
       alternatesFor(url.origin, `/${page}`),
       `${url.origin}/og/home-${locale}.png`,
     ).transform(response);
+  }
+
+  const proposalMatch = url.pathname.match(PROPOSAL_PATH_RE);
+  if (proposalMatch) {
+    const locale = (proposalMatch[1] as PreviewLocale | undefined) ?? 'en';
+    const id = proposalMatch[2].toLowerCase();
+    // Same per-IP cap as the profile lookup: one D1 read per hit.
+    const rl = await rateLimit(
+      request,
+      { waitUntil: context.waitUntil.bind(context) },
+      { bucket: 'mw-og-lookup', limit: 60, windowSec: 600 },
+    );
+    const preview = rl.ok ? await loadProposalPreview(env, id).catch(() => null) : null;
+    const response = await next();
+    const ctype = response.headers.get('content-type') ?? '';
+    if (!ctype.includes('text/html')) return response;
+    // Private links: never indexed, whatever their state.
+    let rewriter = new HTMLRewriter()
+      .on('meta[name="robots"]', new MetaTagSetter('name', 'robots', 'noindex, nofollow'))
+      .on('link[rel="alternate"]', new AlternateSetter(null))
+      .on('html', new HtmlLangSetter(SEO_COPY[locale].htmlLang));
+    if (preview) {
+      const copy = PREVIEW_COPY[locale];
+      const open = preview.status === 'pending' || preview.status === 'accepted';
+      const title = copy.title(preview.cafeName);
+      const when = open ? formatPreviewTime(preview, locale) : null;
+      const description = open
+        ? [when, preview.cafeAddress, copy.cta].filter(Boolean).join(' · ')
+        : copy.closed;
+      const pageUrl = `${url.origin}${url.pathname}`;
+      const image = `${url.origin}/api/og/proposal/${id}?l=${locale}&v=${preview.scheduledAt}-${preview.cafeIndex}-${preview.status}`;
+      rewriter = rewriter
+        .on('title', new TitleSetter(`${title} — ACoffee`))
+        .on('meta[name="description"]', new MetaTagSetter('name', 'description', description))
+        .on('meta[property="og:title"]', new MetaTagSetter('property', 'og:title', title))
+        .on('meta[property="og:description"]', new MetaTagSetter('property', 'og:description', description))
+        .on('meta[property="og:url"]', new MetaTagSetter('property', 'og:url', pageUrl))
+        .on('meta[property="og:locale"]', new MetaTagSetter('property', 'og:locale', SEO_COPY[locale].ogLocale))
+        .on('meta[property="og:image"]', new MetaTagSetter('property', 'og:image', image))
+        .on('meta[property="og:image:alt"]', new MetaTagSetter('property', 'og:image:alt', title))
+        .on('meta[name="twitter:card"]', new MetaTagSetter('name', 'twitter:card', 'summary_large_image'))
+        .on('meta[name="twitter:title"]', new MetaTagSetter('name', 'twitter:title', title))
+        .on('meta[name="twitter:description"]', new MetaTagSetter('name', 'twitter:description', description))
+        .on('meta[name="twitter:image"]', new MetaTagSetter('name', 'twitter:image', image))
+        .on('meta[name="twitter:image:alt"]', new MetaTagSetter('name', 'twitter:image:alt', title))
+        .on('link[rel="canonical"]', new CanonicalSetter(pageUrl));
+    }
+    return rewriter.transform(response);
   }
 
   const match = url.pathname.match(USERNAME_RE);

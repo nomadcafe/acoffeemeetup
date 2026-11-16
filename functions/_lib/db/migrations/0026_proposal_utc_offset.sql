@@ -1,0 +1,1 @@
+ALTER TABLE `proposals` ADD `utc_offset_minutes` integer;

@@ -272,6 +272,10 @@ export const proposals = sqliteTable(
     /** Current index into [main, ...alts]. Starts at 0 (main); each
      *  Next-cafe tap advances; wraps. */
     cafeIndex: integer('cafe_index').notNull().default(0),
+    /** The café's UTC offset when the proposal was made, so link previews
+     *  (rendered server-side, no browser clock) can show the meeting time
+     *  as it reads at the café. Null on older rows → preview omits time. */
+    utcOffsetMinutes: integer('utc_offset_minutes'),
     /** 'pending' | 'accepted' | 'cancelled' — receiver can accept once,
      *  sender can cancel (future). Past `expires_at` rows GC'd nightly. */
     status: text('status').notNull().default('pending'),

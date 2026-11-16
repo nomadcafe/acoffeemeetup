@@ -55,7 +55,7 @@ function defaultScheduledAt(): number {
  * what I found"; this sends "let's go here at this time."
  */
 export function ProposeButton({ shop }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { coffeeShops, locationA, locationB, locationC, agentMode, meetAt } = useApp();
   const { data: session } = useSession();
   const [flash, setFlash] = useState<Flash>('idle');
@@ -120,6 +120,8 @@ export function ProposeButton({ shop }: Props) {
           scheduledAt,
           addresses,
           mode: agentMode,
+          utcOffsetMinutes: shop.utcOffsetMinutes,
+          locale,
         }),
       });
       if (!res.ok) {

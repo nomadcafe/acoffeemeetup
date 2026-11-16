@@ -35,6 +35,11 @@ const InputSchema = z.object({
   scheduledAt: z.number().int().positive(),
   addresses: z.array(z.string().trim().max(400)).max(3),
   mode: z.enum(['fair', 'fast', 'vibe', 'quiet', 'now']).default('fair'),
+  /** Café's UTC offset (Places utcOffsetMinutes), for the link preview. */
+  utcOffsetMinutes: z.number().int().min(-14 * 60).max(14 * 60).optional(),
+  /** Sender's UI language — the share URL carries it so the preview and
+   *  the page open in that language. */
+  locale: z.enum(['en', 'ja', 'zh']).optional(),
 });
 
 const PROPOSAL_TTL_MS = 72 * 60 * 60_000; // 3 days; matches "let me think on it"
@@ -85,6 +90,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
     mode: input.mode,
     altCafesJson: JSON.stringify(input.altCafes),
     cafeIndex: 0,
+    utcOffsetMinutes: input.utcOffsetMinutes ?? null,
     status: 'pending',
     createdAt: now,
     expiresAt,
@@ -92,7 +98,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
 
   return Response.json({
     id,
-    url: `https://acoffee.com/p/${id}`,
+    url: `https://acoffee.com/${input.locale ? `${input.locale}/` : ''}p/${id}`,
     expiresAt: expiresAt.getTime(),
   });
 };
