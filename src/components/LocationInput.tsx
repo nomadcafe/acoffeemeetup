@@ -6,9 +6,16 @@ import {
   useAddressAutocomplete,
   type UseAddressAutocomplete,
 } from '../hooks/useAddressAutocomplete';
+import { SearchFilters } from './SearchFilters';
 import styles from './LocationInput.module.css';
 
-export function LocationInput() {
+interface LocationInputProps {
+  /** Pre-search: put the filters on the "add another person" row inside
+   *  the card instead of as a separate block below it. */
+  inlineFilters?: boolean;
+}
+
+export function LocationInput({ inlineFilters = false }: LocationInputProps) {
   const { t, locale } = useI18n();
   const { addressA, addressB, addressC, setAddressA, setAddressB, setAddressC } =
     useAddressDraft();
@@ -168,16 +175,19 @@ export function LocationInput() {
         ) : null}
       </div>
 
-      {!showC ? (
+      {!showC || inlineFilters ? (
         <div className={styles.addThirdGroup}>
-          <button
-            type="button"
-            className={styles.addThirdButton}
-            onClick={handleAddThird}
-            disabled={isLoading}
-          >
-            + {t('location.addThird')}
-          </button>
+          {!showC ? (
+            <button
+              type="button"
+              className={styles.addThirdButton}
+              onClick={handleAddThird}
+              disabled={isLoading}
+            >
+              + {t('location.addThird')}
+            </button>
+          ) : null}
+          {inlineFilters ? <SearchFilters variant="inline" /> : null}
         </div>
       ) : null}
 

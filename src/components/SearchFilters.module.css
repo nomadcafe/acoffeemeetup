@@ -256,3 +256,56 @@
   font-weight: 500;
   color: #555;
 }
+
+/* ────── Inline variant (inside the pre-search form card) ────── */
+
+/* Text-link weight to match "+ Add another person" on the same row. */
+.inlineTrigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  border-radius: var(--ac-radius-sm);
+  color: var(--ac-text-muted);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.25rem 0.1rem;
+  cursor: pointer;
+  transition: color var(--ac-motion-fast);
+}
+
+.inlineTrigger:hover {
+  color: var(--ac-text);
+}
+
+.inlineTrigger:focus-visible {
+  outline: 2px solid var(--ac-accent);
+  outline-offset: 2px;
+}
+
+.inlineChevron {
+  transform: rotate(90deg);
+  transition: transform var(--ac-motion-base);
+}
+
+.inlineChevron[data-open] {
+  transform: rotate(-90deg);
+}
+
+/* Full row under the trigger; sits inside the card so the submit button
+ * follows the settings it applies. */
+.inlinePanel {
+  flex-basis: 100%;
+  margin-top: 0.5rem;
+  padding: 1rem 1rem 0.25rem;
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-surface-tinted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inlineChevron { transition: none; }
+}

@@ -223,6 +223,8 @@ export const messages: MessageDict = {
   'card.closed': 'Closed',
 
   'filters.title': 'Optional filters',
+  'filters.inlineTrigger': 'Filters',
+  'filters.inlineTriggerCount': 'Filters · {{count}}',
   'filters.lead':
     'Built for <strong>coffee meetups</strong> by default. These settings apply the <strong>next</strong> time you tap <strong>Find Meetup Spot</strong> above — nothing here runs a search by itself.',
   'filters.leadNearby':

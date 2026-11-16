@@ -209,6 +209,8 @@ export const messages: MessageDict = {
   'card.closed': '已打烊',
 
   'filters.title': '可选筛选',
+  'filters.inlineTrigger': '筛选',
+  'filters.inlineTriggerCount': '筛选 · {{count}}',
   'filters.lead':
     '默认面向<strong>咖啡会面</strong>。这些设置会在你<strong>下一次</strong>点击<strong>查找会面点</strong>时生效；仅修改设置不会自动搜索。',
   'filters.leadNearby':

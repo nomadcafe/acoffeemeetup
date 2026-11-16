@@ -213,6 +213,8 @@ export const messages: MessageDict = {
   'card.closed': '閉店',
 
   'filters.title': '詳細フィルター（任意）',
+  'filters.inlineTrigger': 'フィルター',
+  'filters.inlineTriggerCount': 'フィルター · {{count}}',
   'filters.lead':
     'デフォルトは<strong>カフェ待ち合わせ</strong>向けです。ここでの設定は、次に<strong>待ち合わせ地点を検索</strong>を押したときに使われます。入力だけでは検索は走りません。',
   'filters.leadNearby':

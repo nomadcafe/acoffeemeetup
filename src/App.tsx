@@ -185,10 +185,9 @@ function AppShell() {
       >
         {useInlinePreSearch ? (
           <aside className="sidebar sidebarInline">
-            <LocationInput />
+            <LocationInput inlineFilters />
             <HeroQuickStarts />
             <AgentModeChips />
-            <SearchFilters />
             <CoffeeShopList />
           </aside>
         ) : (

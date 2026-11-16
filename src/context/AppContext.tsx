@@ -60,6 +60,8 @@ import {
   SEARCH_RADIUS_MIN_M,
   SEARCH_RATING_MAX,
   SEARCH_RATING_MIN,
+  DEFAULT_MIN_RATING,
+  DEFAULT_RADIUS_M,
   type OwnerAttribution,
 } from '../utils/places';
 
@@ -184,8 +186,6 @@ function loadAddressTemplates(): string[] {
   }
 }
 
-const DEFAULT_MIN_RATING = 4;
-const DEFAULT_RADIUS_M = 1200;
 /* Default is empty: an empty keyword skips the post-hoc name filter, which
  * is what users want by default (don't drop most cafés just because their
  * name doesn't contain "coffee"). The previous default was the literal

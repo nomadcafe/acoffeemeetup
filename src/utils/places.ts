@@ -10,6 +10,8 @@ export const SEARCH_RADIUS_MIN_M = 400;
 export const SEARCH_RADIUS_MAX_M = 10_000;
 export const SEARCH_RATING_MIN = 3;
 export const SEARCH_RATING_MAX = 5;
+export const DEFAULT_MIN_RATING = 4;
+export const DEFAULT_RADIUS_M = 1200;
 
 /** Extra meters when filtering by radius so slight API / floating-point differences do not drop valid rows. */
 const RADIUS_FILTER_BUFFER_M = 100;
