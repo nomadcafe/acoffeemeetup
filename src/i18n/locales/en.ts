@@ -98,12 +98,10 @@ export const messages: MessageDict = {
   'location.thirdLocation': 'Third Location',
   'location.placeholderC': "e.g., friend's place in Queens",
   'location.addThird': 'Add another person',
-  'location.addThirdHint': 'Three-way meetup? The agent balances all three of you.',
   'location.removeThird': 'Remove third person',
   'location.findButton': 'Find Meetup Spot',
   'location.searching': 'Searching...',
   'location.recentTitle': 'Recent searches',
-  'location.useRecent': 'Use',
   'location.recentRemove': 'Remove',
   'location.recentRemoveAria': 'Remove recent search: {{a}} and {{b}}',
   'location.recentClearAll': 'Clear all',
@@ -151,13 +149,6 @@ export const messages: MessageDict = {
     'Hidden gems with fewer reviews · less crowded',
   'agentReason.now':
     'Open right now · fair travel time for everyone',
-
-  'list.fairnessExplain':
-    "Sorted so everyone's travel time is as equal as possible. Real transit minutes when available, falling back to straight-line distance.",
-  'list.fastExplain':
-    'Sorted by shortest total travel time — gets everyone there as quickly as possible.',
-  'list.quietExplain':
-    'Hidden gems first — high ratings with fewer reviews bubble up over the well-trodden tourist spots.',
 
   'card.favorite': 'Your Favorite!',
   'card.visitedOnce': 'Visited {{last}}',
@@ -254,9 +245,7 @@ export const messages: MessageDict = {
   'filters.keywordCafe': 'Narrow cafés by name',
   'filters.keywordOther': 'Narrow by name',
   'filters.sortMode': 'Sort results by',
-  'filters.sortRating': 'Rating (default)',
   'filters.sortFairness': 'Fairness between A and B',
-  'filters.sortHint': 'Fairness prioritizes places with a smaller distance gap between both people.',
   'filters.openNow': 'Open now only',
   'filters.openNowShort': 'Open now',
   'filters.openNowHint': 'Hides cafés that are closed or have unknown hours.',
@@ -440,13 +429,10 @@ export const messages: MessageDict = {
   'account.profilePrivateHint': 'Off — your profile is private.',
   'account.profileNeedsUsername': 'Pick a username first (coming soon).',
   'account.profileSaveFailed': "Couldn't update visibility. Try again?",
-  'account.profileContentTitle': 'Profile content',
-  'account.profileContentHint': "Shown on your public profile when it's published. All optional.",
   'account.displayNameLabel': 'Display name',
   'account.displayNamePlaceholder': 'How you want to appear (e.g. Tomi)',
   'account.bioLabel': 'Bio',
   'account.bioPlaceholder': 'One short line — what you drink, where you roam.',
-  'account.socialLinksLabel': 'Links',
   'account.socialLinksEmpty': 'No links yet. Add up to 5 — your site, X, IG, GitHub…',
   'account.linkLabelPlaceholder': 'Label',
   'account.linkLabelAria': 'Link label',
@@ -549,8 +535,6 @@ export const messages: MessageDict = {
   'account.calendarSaveFailed': "Couldn't read that calendar URL. Double-check it's the secret iCal link and try again.",
   'profile.heroAria': "User's coffee profile",
   'profile.memberSince': 'Brewing since {{date}}',
-  'profile.ownedCafeTitle': 'Café I run',
-  'profile.favoriteCafeTitle': 'Favorite café',
   'profile.featuredCafesTitle': 'Featured cafés',
   'profile.featuredCafeRelationOwned': 'I run this',
   'profile.featuredCafeRelationFavorite': 'Favorite',
@@ -572,9 +556,6 @@ export const messages: MessageDict = {
   'showcase.lead': 'Enter two addresses. ACoffee picks a well-rated café that’s fair for both of you.',
   'profile.topShopsTitle': 'Favourite cafés',
   'profile.shopVisits': '{{count}} visits',
-  'profile.bookTitle': 'Book a coffee',
-  'profile.bookHint': "When this user opens up time slots, you'll be able to invite them for a coffee here.",
-  'profile.bookComingSoon': 'Coming soon',
 
   'bookingWidget.title': 'Book a coffee',
   'bookingWidget.lead': 'Pick a time below; we\'ll auto-pick a café halfway between {{handle}} and you.',
@@ -780,7 +761,6 @@ export const messages: MessageDict = {
 
   'changelog.pageTitle': 'Update log',
   'changelog.pageLead': 'Recent changes to this site, in your selected language.',
-  'changelog.backHome': 'Back to finder',
   'changelog.navLink': 'What’s new',
 
   'bottomNav.aria': 'Site',
