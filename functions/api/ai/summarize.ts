@@ -75,8 +75,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
 
   try {
     const deepseek = createDeepSeek({ apiKey: env.DEEPSEEK_API_KEY });
-    const { text } = await generateText({
+    const { text, finishReason } = await generateText({
       model: deepseek(env.AI_SUMMARY_MODEL ?? 'deepseek-v4-flash'),
+      // V4 Flash thinks by default, and reasoning tokens count against
+      // maxOutputTokens: with 8 real reviews it spent ~197 of 200 tokens
+      // thinking and returned "" (or a cut-off fragment), so every card
+      // showed "Couldn't summarize". A two-line summary doesn't need it;
+      // off is also faster, cheaper, and lets temperature apply.
+      providerOptions: { deepseek: { thinking: { type: 'disabled' } } },
       system: SYSTEM,
       prompt: `User locale: ${input.locale}\n\nCafé: ${input.placeName}\n\nReviews:\n${input.reviews
         .map(
@@ -89,6 +95,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
     });
 
     const summary = text.trim();
+    // Never cache or return an empty / truncated result as success — it
+    // would pin a blank summary for this place for 30 days.
+    if (!summary || finishReason === 'length') {
+      console.warn('summarize: unusable model output', finishReason, summary.length);
+      return jsonError('Empty model output', 502);
+    }
     writeSummaryCache(input.placeId, input.locale, inputHash, summary, waitUntil);
 
     return Response.json(
