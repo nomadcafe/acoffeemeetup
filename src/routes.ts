@@ -63,3 +63,22 @@ export function matchProfileUsername(logicalPath: string): string | null {
   const m = logicalPath.match(USERNAME_PATH_REGEX);
   return m ? m[1] : null;
 }
+
+/** True only for a real public-profile URL: App.tsx resolves every named
+ *  route first, and a bare slug like "updatelog" also has username shape. */
+export function isPublicProfilePath(logicalPath: string): boolean {
+  if (
+    isPassportPath(logicalPath) ||
+    isAccountPath(logicalPath) ||
+    isAccountSetupPath(logicalPath) ||
+    isBookingsPath(logicalPath) ||
+    isBookingCancelPath(logicalPath) ||
+    isBookingConfirmPath(logicalPath) ||
+    matchProposalId(logicalPath) != null ||
+    logicalPath === '/updatelog' ||
+    logicalPath.startsWith('/updatelog/')
+  ) {
+    return false;
+  }
+  return matchProfileUsername(logicalPath) != null;
+}

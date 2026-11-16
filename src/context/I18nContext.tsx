@@ -17,6 +17,7 @@ import {
 } from '../i18n/detectLocale';
 import { isUpdatesPath } from '../i18n/changelog';
 import { notifyLocationSync } from '../i18n/locationSync';
+import { isPassportPath, isPublicProfilePath } from '../routes';
 
 interface I18nContextValue {
   locale: Locale;
@@ -138,12 +139,28 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     const logicalPath = stripLocalePrefix(window.location.pathname);
     const onChangelog = isUpdatesPath(logicalPath);
+    // Public profiles get their title / description / canonical from the
+    // edge middleware (the user's name and bio). Overwriting them here
+    // with the homepage copy is what Google's renderer would index.
+    if (isPublicProfilePath(logicalPath)) return;
+    const onPassport = isPassportPath(logicalPath);
 
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : locale === 'ja' ? 'ja' : 'en';
-    document.title = onChangelog ? t('changelog.metaTitle') : t('meta.title');
-    upsertMetaByName('description', onChangelog ? t('changelog.metaDescription') : t('seo.description'));
+    document.title = onChangelog
+      ? t('changelog.metaTitle')
+      : onPassport
+        ? t('passport.metaTitle')
+        : t('meta.title');
+    upsertMetaByName(
+      'description',
+      onChangelog
+        ? t('changelog.metaDescription')
+        : onPassport
+          ? t('passport.metaDescription')
+          : t('seo.description'),
+    );
     upsertMetaByName('keywords', onChangelog ? t('changelog.metaKeywords') : t('seo.keywords'));
-    upsertMetaByProperty('og:url', window.location.href);
+    upsertMetaByProperty('og:url', `${window.location.origin}${window.location.pathname}`);
     upsertMetaByProperty('og:title', onChangelog ? t('changelog.ogTitle') : t('seo.ogTitle'));
     upsertMetaByProperty('og:description', onChangelog ? t('changelog.ogDescription') : t('seo.ogDescription'));
     upsertMetaByProperty('og:locale', t('seo.ogLocale'));
@@ -155,7 +172,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       'twitter:description',
       onChangelog ? t('changelog.twitterDescription') : t('seo.twitterDescription')
     );
-    upsertLinkRel('canonical', window.location.href);
+    // Path only: search state lives in the query (?a=&b=&cafe=), and a
+    // canonical that includes it makes every shared search a "page".
+    upsertLinkRel('canonical', `${window.location.origin}${window.location.pathname}`);
 
     const origin = window.location.origin;
     const currentBasePath = window.location.pathname.replace(/^\/(en|ja|zh)(?=\/|$)/, '') || '/';

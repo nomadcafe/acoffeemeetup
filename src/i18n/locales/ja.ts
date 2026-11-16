@@ -1,21 +1,17 @@
 import type { MessageDict } from '../messages';
 
 export const messages: MessageDict = {
-  'meta.title': 'ACoffee — AI が最適な待ち合わせカフェを選ぶ',
-  'seo.description':
-    '2〜3 人の住所から AI が一番公平なカフェを選びます — 実際の交通時間ベースで、単なる地理的中点ではありません。acoffee.com/yourname で、友人も顧客もワンタップでコーヒーの予約ができます。',
+  'meta.title': '中間地点のカフェ検索｜ふたりの真ん中で会う — ACoffee',
+  'seo.description': '2〜3人の住所を入れるだけで、全員に公平な評価の高いカフェを実際の移動時間で選びます。地図上の中間点だけではありません。無料・登録不要。',
   'seo.keywords':
     'カフェ 待ち合わせ, 待ち合わせ場所, 中間地点, 中点, 合流場所, 中間 カフェ, 2地点の中間, 2人の中間, 3人の中間, グループ 待ち合わせ, デート カフェ, 初デート カフェ, 打ち合わせ カフェ, 商談 カフェ, 駅近 カフェ, 人気カフェ, 高評価 カフェ, おすすめ カフェ, コーヒーショップ 検索, カフェ 地図, カフェ検索, コーヒー 予約, コーヒー スケジュール, Calendly コーヒー, コーヒー プロフィール, AI カフェ 待ち合わせ, AI 中間地点, 公平度 スコア, AI 待ち合わせ 場所, AI が決める カフェ, meet in the middle, acoffee',
-  'seo.ogTitle': 'ACoffee — 待ち合わせに最適なカフェを探す',
-  'seo.ogDescription':
-    '「どこで会う？」とはもう聞かない — AI が全員にいちばん公平なカフェを実際の交通時間で選びます。acoffee.com/yourname のワンタップ予約も。',
+  'seo.ogTitle': 'ふたりの真ん中で、いいコーヒーを。— ACoffee',
+  'seo.ogDescription': '住所をふたつ入れるだけ。どちらにも公平で、評価の高いカフェを選びます。無料・登録不要。',
   'seo.ogLocale': 'ja_JP',
-  'seo.twitterTitle': 'ACoffee — 待ち合わせに最適なカフェを探す',
-  'seo.twitterDescription':
-    '「どこで会う？」とはもう聞かない — AI が全員にいちばん公平なカフェを実際の交通時間で選びます。acoffee.com/yourname のワンタップ予約も。',
+  'seo.twitterTitle': 'ふたりの真ん中で、いいコーヒーを。— ACoffee',
+  'seo.twitterDescription': '住所をふたつ入れるだけ。どちらにも公平で、評価の高いカフェを選びます。無料・登録不要。',
   'seo.schemaName': 'ACoffee',
-  'seo.schemaDescription':
-    '2〜3 人で待ち合わせる際、各人の実際の交通時間に基づいていちばん公平なカフェを選ぶ AI エージェント。acoffee.com/yourname の公開プロフィールでワンタップのコーヒー予約も受けられます。',
+  'seo.schemaDescription': '2〜3人で会うときに、それぞれの実際の移動時間をもとに全員に公平で評価の高いカフェを選ぶ無料ツール。登録不要。',
 
   'app.logoAlt': 'A Coffee',
   'header.githubAria': 'GitHub でソースを見る',
@@ -312,6 +308,9 @@ export const messages: MessageDict = {
   'passport.heatmapMore': '多',
   'passport.heatmapAria': '直近 90 日の来店ヒートマップ',
   'passport.pageTitle': 'コーヒーパスポート',
+  'passport.metaTitle': 'コーヒーパスポート — 行ったカフェを記録 · ACoffee',
+  'passport.metaDescription':
+    '訪れたカフェにスタンプを押して、メモや評価、コーヒーマップや連続記録を残せます。無料・アカウントなしでも使えます。',
   'passport.pageLead': '来店済みにしたカフェをすべてまとめて表示します。',
   'passport.statsLabel': 'パスポート統計',
   'passport.statShops': 'カフェ数',

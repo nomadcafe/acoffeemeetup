@@ -1,18 +1,17 @@
 import type { MessageDict } from '../messages';
 
 export const messages: MessageDict = {
-  'meta.title': 'ACoffee — AI 帮你找最合适的会面咖啡店',
-  'seo.description':
-    'AI 在两到三个地址之间挑最公平的咖啡店——按实际公共交通时间算，不是只看地理中点。分享 acoffee.com/yourname，朋友或客户都能一键约你喝咖啡。',
+  'meta.title': '两地中间点咖啡馆查找｜在两人中间见面 — ACoffee',
+  'seo.description': '输入两到三个地址，ACoffee 按实际通勤时间，挑一家评分高、对每个人都公平的咖啡馆，不只是地图中点。免费，无需注册。',
   'seo.keywords':
     '咖啡 见面, 咖啡馆, 咖啡店 推荐, 中间点, 中点 咖啡, 中间位置, 两地之间, 两人中间, 三人中点, 多人见面, 见面地点, 约会地点, 约会 咖啡, 相亲 咖啡, 朋友见面, 商务会面, 会面地点, 高评分 咖啡店, 附近 咖啡店, 地铁站 咖啡, 咖啡馆 地图, 找咖啡, 咖啡预约, 约咖啡, 预约咖啡, 客户约见, 商务咖啡, 个人预约页, Calendly 咖啡, 咖啡主页, AI 咖啡 见面, AI 中间点, 公平度评分, AI 找咖啡店, AI 决定咖啡, 该去哪家咖啡, meet in the middle, acoffee',
-  'seo.ogTitle': 'ACoffee — 找到最合适的会面咖啡店',
-  'seo.ogDescription': '不用再纠结"去哪见面" — AI 按实际通勤时间为大家挑最公平的咖啡店。还能用 acoffee.com/yourname 让朋友或客户一键约你喝咖啡。',
+  'seo.ogTitle': '在两人中间，喝一杯好咖啡。— ACoffee',
+  'seo.ogDescription': '输入两个地址，ACoffee 帮你们挑一家评分高、对双方都公平的咖啡馆。免费，无需注册。',
   'seo.ogLocale': 'zh_CN',
-  'seo.twitterTitle': 'ACoffee — 找到最合适的会面咖啡店',
-  'seo.twitterDescription': '不用再纠结"去哪见面" — AI 按实际通勤时间为大家挑最公平的咖啡店。还能用 acoffee.com/yourname 让朋友或客户一键约你喝咖啡。',
+  'seo.twitterTitle': '在两人中间，喝一杯好咖啡。— ACoffee',
+  'seo.twitterDescription': '输入两个地址，ACoffee 帮你们挑一家评分高、对双方都公平的咖啡馆。免费，无需注册。',
   'seo.schemaName': 'ACoffee',
-  'seo.schemaDescription': '帮二到三个人约咖啡的 AI agent — 按每个人的实际公共交通时间挑最公平的咖啡店，不是单看地理中点。还有 acoffee.com/yourname 公开主页支持朋友或客户一键预约。',
+  'seo.schemaDescription': '两到三人见面时，按每个人的实际通勤时间挑一家评分高、对大家都公平的咖啡馆的免费工具，无需注册。',
 
   'app.logoAlt': 'A Coffee',
   'header.githubAria': '在 GitHub 查看源码',
@@ -307,6 +306,9 @@ export const messages: MessageDict = {
   'passport.heatmapMore': '多',
   'passport.heatmapAria': '最近 90 天咖啡打卡热力图',
   'passport.pageTitle': '咖啡护照',
+  'passport.metaTitle': '咖啡护照 — 记录你去过的咖啡馆 · ACoffee',
+  'passport.metaDescription':
+    '给去过的每家咖啡馆盖章，写笔记、打分，查看你的咖啡地图和连续打卡。免费，不登录也能用。',
   'passport.pageLead': '你标记过的所有咖啡店，集中在一个页面。',
   'passport.statsLabel': '护照统计',
   'passport.statShops': '咖啡店数',

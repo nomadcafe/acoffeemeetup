@@ -1,21 +1,21 @@
 import type { MessageDict } from '../messages';
 
 export const messages: MessageDict = {
-  'meta.title': 'ACoffee — AI finds the best meetup place',
+  'meta.title': 'Meet Halfway — Find a Café Between Two Addresses | ACoffee',
   'seo.description':
-    'AI finds the fairest coffee shop between two or three addresses — using real transit time, not just the geographic midpoint. Share acoffee.com/yourname so friends or clients can book a coffee with you in one tap.',
+    'Enter two or three addresses and ACoffee finds a well-rated café that\'s fair for everyone — by real travel time, not just the map midpoint. Free, no sign-up.',
   'seo.keywords':
     'acoffee, acoffee.com, coffee meetup, cafe finder, halfway point, midpoint map, meet in the middle, meet halfway, halfway between two addresses, cafe between two locations, three-person midpoint, group meetup, equidistant cafe, meeting point finder, coffee date spot, first date cafe, top rated coffee shops, coffee shop near me, specialty coffee, cafe map, meetup planner, friends meetup, business meeting cafe, coffee booking, schedule a coffee, calendly for coffee, coffee profile, book a coffee with me, coffee meetup ai, where to meet ai, fairness score, fair meeting point, ai chooses cafe, agent finds coffee, where should we meet',
-  'seo.ogTitle': 'ACoffee — Best Meetup Place Finder',
+  'seo.ogTitle': 'Meet halfway, over great coffee — ACoffee',
   'seo.ogDescription':
-    "No more 'where should we meet?' — AI picks the fairest café for everyone, using real transit time. Plus acoffee.com/yourname for one-tap coffee bookings.",
+    'Enter two addresses. ACoffee picks a well-rated café that\'s fair for both of you — by real travel time. Free, no sign-up.',
   'seo.ogLocale': 'en_US',
-  'seo.twitterTitle': 'ACoffee — Best Meetup Place Finder',
+  'seo.twitterTitle': 'Meet halfway, over great coffee — ACoffee',
   'seo.twitterDescription':
-    "No more 'where should we meet?' — AI picks the fairest café for everyone, using real transit time. Plus acoffee.com/yourname for one-tap coffee bookings.",
+    'Enter two addresses. ACoffee picks a well-rated café that\'s fair for both of you — by real travel time. Free, no sign-up.',
   'seo.schemaName': 'ACoffee',
   'seo.schemaDescription':
-    'AI agent that picks the fairest coffee shop for two or three people meeting up — using real transit time across each party, not just a geographic midpoint. Includes a public profile surface at acoffee.com/yourname for one-tap coffee bookings.',
+    'Find a well-rated café that\'s fair for two or three people meeting up, ranked by each person\'s real travel time rather than the geographic midpoint. Free, no sign-up.',
 
   'app.logoAlt': 'A Coffee',
   'header.githubAria': 'Source on GitHub',
@@ -322,6 +322,9 @@ export const messages: MessageDict = {
   'passport.heatmapMore': 'More',
   'passport.heatmapAria': 'Coffee visit heatmap, last 90 days',
   'passport.pageTitle': 'Coffee Passport',
+  'passport.metaTitle': 'Coffee Passport — log the cafés you visit · ACoffee',
+  'passport.metaDescription':
+    'Stamp every café you visit, add notes and ratings, and see your coffee map and streak. Free, works without an account.',
   'passport.pageLead': 'Every café you marked as visited, collected in one place.',
   'passport.statsLabel': 'Passport stats',
   'passport.statShops': 'Cafés visited',

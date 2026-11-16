@@ -44,54 +44,101 @@ type Locale = 'en' | 'ja' | 'zh';
  * source tree at build time. Keep in sync when those keys change —
  * grep for `seo.ogTitle` in this file before editing the i18n locales.
  */
-const SEO_COPY: Record<Locale, {
+interface PageCopy {
   title: string;
   description: string;
   ogTitle: string;
   ogDescription: string;
+}
+
+const SEO_COPY: Record<Locale, PageCopy & {
   ogLocale: string;
-  twitterTitle: string;
-  twitterDescription: string;
   htmlLang: string;
+  ogImageAlt: string;
 }> = {
   en: {
-    title: 'ACoffee — Best Meetup Place Finder',
+    title: 'Meet Halfway — Find a Café Between Two Addresses | ACoffee',
     description:
-      'AI finds the fairest coffee shop between two or three addresses — using real transit time, not just the geographic midpoint. Share acoffee.com/yourname so friends or clients can book a coffee with you in one tap.',
-    ogTitle: 'ACoffee — Best Meetup Place Finder',
+      "Enter two or three addresses and ACoffee finds a well-rated café that's fair for everyone — by real travel time, not just the map midpoint. Free, no sign-up.",
+    ogTitle: 'Meet halfway, over great coffee — ACoffee',
     ogDescription:
-      "No more 'where should we meet?' — AI picks the fairest café for everyone, using real transit time. Plus acoffee.com/yourname for one-tap coffee bookings.",
+      "Enter two addresses. ACoffee picks a well-rated café that's fair for both of you — by real travel time. Free, no sign-up.",
     ogLocale: 'en_US',
-    twitterTitle: 'ACoffee — Best Meetup Place Finder',
-    twitterDescription:
-      "No more 'where should we meet?' — AI picks the fairest café for everyone, using real transit time. Plus acoffee.com/yourname for one-tap coffee bookings.",
     htmlLang: 'en',
+    ogImageAlt: 'ACoffee — Meet halfway, over great coffee.',
   },
   ja: {
-    title: 'ACoffee — 待ち合わせに最適なカフェを探す',
+    title: '中間地点のカフェ検索｜ふたりの真ん中で会う — ACoffee',
     description:
-      '2〜3 人の住所から AI が一番公平なカフェを選びます — 実際の交通時間ベースで、単なる地理的中点ではありません。acoffee.com/yourname で、友人も顧客もワンタップでコーヒーの予約ができます。',
-    ogTitle: 'ACoffee — 待ち合わせに最適なカフェを探す',
-    ogDescription:
-      '「どこで会う？」とはもう聞かない — AI が全員にいちばん公平なカフェを実際の交通時間で選びます。acoffee.com/yourname のワンタップ予約も。',
+      '2〜3人の住所を入れるだけで、全員に公平な評価の高いカフェを実際の移動時間で選びます。地図上の中間点だけではありません。無料・登録不要。',
+    ogTitle: 'ふたりの真ん中で、いいコーヒーを。— ACoffee',
+    ogDescription: '住所をふたつ入れるだけ。どちらにも公平で、評価の高いカフェを選びます。無料・登録不要。',
     ogLocale: 'ja_JP',
-    twitterTitle: 'ACoffee — 待ち合わせに最適なカフェを探す',
-    twitterDescription:
-      '「どこで会う？」とはもう聞かない — AI が全員にいちばん公平なカフェを実際の交通時間で選びます。acoffee.com/yourname のワンタップ予約も。',
     htmlLang: 'ja',
+    ogImageAlt: 'ACoffee — ふたりの真ん中で、いいコーヒーを。',
   },
   zh: {
-    title: 'ACoffee — 找到最合适的会面咖啡店',
+    title: '两地中间点咖啡馆查找｜在两人中间见面 — ACoffee',
     description:
-      'AI 在两到三个地址之间挑最公平的咖啡店——按实际公共交通时间算，不是只看地理中点。分享 acoffee.com/yourname，朋友或客户都能一键约你喝咖啡。',
-    ogTitle: 'ACoffee — 找到最合适的会面咖啡店',
-    ogDescription: '不用再纠结"去哪见面" — AI 按实际通勤时间为大家挑最公平的咖啡店。还能用 acoffee.com/yourname 让朋友或客户一键约你喝咖啡。',
+      '输入两到三个地址，ACoffee 按实际通勤时间，挑一家评分高、对每个人都公平的咖啡馆，不只是地图中点。免费，无需注册。',
+    ogTitle: '在两人中间，喝一杯好咖啡。— ACoffee',
+    ogDescription: '输入两个地址，ACoffee 帮你们挑一家评分高、对双方都公平的咖啡馆。免费，无需注册。',
     ogLocale: 'zh_CN',
-    twitterTitle: 'ACoffee — 找到最合适的会面咖啡店',
-    twitterDescription: '不用再纠结"去哪见面" — AI 按实际通勤时间为大家挑最公平的咖啡店。还能用 acoffee.com/yourname 让朋友或客户一键约你喝咖啡。',
     htmlLang: 'zh-CN',
+    ogImageAlt: 'ACoffee — 在两人中间，喝一杯好咖啡。',
   },
 };
+
+/** Indexable secondary SPA pages (all listed in sitemap.xml). Without
+ *  this they shipped the homepage's English title and a canonical
+ *  pointing at `/`, which tells Google they're duplicates of the home. */
+type StaticPage = 'updatelog' | 'passport';
+const PAGE_COPY: Record<StaticPage, Record<Locale, PageCopy>> = {
+  updatelog: {
+    en: {
+      title: 'Update log · ACoffee',
+      description: "What's new in ACoffee — features, fixes and design changes, newest first.",
+      ogTitle: 'Update log · ACoffee',
+      ogDescription: "What's new in ACoffee — features, fixes and design changes.",
+    },
+    ja: {
+      title: '更新ログ · ACoffee',
+      description: 'ACoffee の新機能・改善・デザイン変更の記録（新しい順）。',
+      ogTitle: '更新ログ · ACoffee',
+      ogDescription: 'ACoffee の新機能・改善・デザイン変更の記録。',
+    },
+    zh: {
+      title: '更新日志 · ACoffee',
+      description: 'ACoffee 的新功能、修复和界面改动记录，按时间倒序。',
+      ogTitle: '更新日志 · ACoffee',
+      ogDescription: 'ACoffee 的新功能、修复和界面改动记录。',
+    },
+  },
+  passport: {
+    en: {
+      title: 'Coffee Passport — log the cafés you visit · ACoffee',
+      description:
+        'Stamp every café you visit, add notes and ratings, and see your coffee map and streak. Free, works without an account.',
+      ogTitle: 'Coffee Passport · ACoffee',
+      ogDescription: 'Stamp every café you visit and see your coffee map and streak.',
+    },
+    ja: {
+      title: 'コーヒーパスポート — 行ったカフェを記録 · ACoffee',
+      description:
+        '訪れたカフェにスタンプを押して、メモや評価、コーヒーマップや連続記録を残せます。無料・アカウントなしでも使えます。',
+      ogTitle: 'コーヒーパスポート · ACoffee',
+      ogDescription: '訪れたカフェにスタンプを押して、コーヒーマップと連続記録を残そう。',
+    },
+    zh: {
+      title: '咖啡护照 — 记录你去过的咖啡馆 · ACoffee',
+      description: '给去过的每家咖啡馆盖章，写笔记、打分，查看你的咖啡地图和连续打卡。免费，不登录也能用。',
+      ogTitle: '咖啡护照 · ACoffee',
+      ogDescription: '给去过的每家咖啡馆盖章，查看你的咖啡地图和连续打卡。',
+    },
+  },
+};
+const PAGE_PATH_RE = /^\/(?:(en|ja|zh)\/)?(updatelog|passport)\/?$/;
+const LOCALES: Locale[] = ['en', 'ja', 'zh'];
 
 const SKIP_PREFIXES = ['/api/', '/assets/', '/_'];
 const SKIP_PATHS = new Set([
@@ -154,14 +201,6 @@ async function fetchProfileForOg(env: AuthEnv, username: string): Promise<Profil
   };
 }
 
-function escapeAttr(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
 interface OgValues {
   title: string;
   description: string;
@@ -199,7 +238,8 @@ class MetaTagSetter {
 class TitleSetter {
   constructor(private readonly title: string) {}
   element(el: Element) {
-    el.setInnerContent(escapeAttr(this.title));
+    // setInnerContent escapes text itself; pre-escaping showed "&amp;amp;".
+    el.setInnerContent(this.title);
   }
 }
 
@@ -208,6 +248,59 @@ class HtmlLangSetter {
   element(el: Element) {
     el.setAttribute('lang', this.lang);
   }
+}
+
+/** Points the static hreflang links at this page's per-locale URLs (or
+ *  drops them when `hrefs` is null — e.g. profiles, which have one
+ *  canonical URL regardless of UI language). */
+class AlternateSetter {
+  constructor(private readonly hrefs: Record<string, string> | null) {}
+  element(el: Element) {
+    if (el.getAttribute('rel') !== 'alternate') return;
+    const lang = el.getAttribute('hreflang');
+    if (!lang) return;
+    if (!this.hrefs) {
+      el.remove();
+      return;
+    }
+    const href = this.hrefs[lang];
+    if (href) el.setAttribute('href', href);
+  }
+}
+
+function alternatesFor(origin: string, basePath: string): Record<string, string> {
+  const hrefs: Record<string, string> = {};
+  for (const l of LOCALES) hrefs[l === 'zh' ? 'zh-CN' : l] = `${origin}/${l}${basePath}`;
+  hrefs['x-default'] = `${origin}/en${basePath}`;
+  return hrefs;
+}
+
+/** Shared head rewrite for the home and static pages. */
+function localizedPageRewriter(
+  locale: Locale,
+  copy: PageCopy,
+  canonicalHref: string,
+  alternates: Record<string, string>,
+  ogImage: string,
+): HTMLRewriter {
+  const base = SEO_COPY[locale];
+  return new HTMLRewriter()
+    .on('html', new HtmlLangSetter(base.htmlLang))
+    .on('title', new TitleSetter(copy.title))
+    .on('meta[name="description"]', new MetaTagSetter('name', 'description', copy.description))
+    .on('meta[property="og:title"]', new MetaTagSetter('property', 'og:title', copy.ogTitle))
+    .on('meta[property="og:description"]', new MetaTagSetter('property', 'og:description', copy.ogDescription))
+    .on('meta[property="og:locale"]', new MetaTagSetter('property', 'og:locale', base.ogLocale))
+    .on('meta[property="og:url"]', new MetaTagSetter('property', 'og:url', canonicalHref))
+    .on('meta[property="og:image"]', new MetaTagSetter('property', 'og:image', ogImage))
+    .on('meta[property="og:image:alt"]', new MetaTagSetter('property', 'og:image:alt', base.ogImageAlt))
+    .on('meta[name="twitter:card"]', new MetaTagSetter('name', 'twitter:card', 'summary_large_image'))
+    .on('meta[name="twitter:title"]', new MetaTagSetter('name', 'twitter:title', copy.ogTitle))
+    .on('meta[name="twitter:description"]', new MetaTagSetter('name', 'twitter:description', copy.ogDescription))
+    .on('meta[name="twitter:image"]', new MetaTagSetter('name', 'twitter:image', ogImage))
+    .on('meta[name="twitter:image:alt"]', new MetaTagSetter('name', 'twitter:image:alt', base.ogImageAlt))
+    .on('link[rel="canonical"]', new CanonicalSetter(canonicalHref))
+    .on('link[rel="alternate"]', new AlternateSetter(alternates));
 }
 
 class CanonicalSetter {
@@ -241,23 +334,35 @@ export const onRequest: PagesFunction<AuthEnv> = async (context) => {
   const homeMatch = url.pathname.match(HOME_PATH_RE);
   if (homeMatch) {
     const locale = (homeMatch[1] as Locale | undefined) ?? 'en';
-    const copy = SEO_COPY[locale];
-    const canonicalHref = `${url.origin}${url.pathname.endsWith('/') ? url.pathname : url.pathname + '/'}`;
+    // `/` serves the same page as `/en/` (and is the hreflang x-default
+    // target's twin), so it canonicalises there instead of competing.
+    const canonicalHref = `${url.origin}/${locale}/`;
     const response = await next();
     const ctype = response.headers.get('content-type') ?? '';
     if (!ctype.includes('text/html')) return response;
-    const rewriter = new HTMLRewriter()
-      .on('html', new HtmlLangSetter(copy.htmlLang))
-      .on('title', new TitleSetter(copy.title))
-      .on('meta[name="description"]', new MetaTagSetter('name', 'description', copy.description))
-      .on('meta[property="og:title"]', new MetaTagSetter('property', 'og:title', copy.ogTitle))
-      .on('meta[property="og:description"]', new MetaTagSetter('property', 'og:description', copy.ogDescription))
-      .on('meta[property="og:locale"]', new MetaTagSetter('property', 'og:locale', copy.ogLocale))
-      .on('meta[property="og:url"]', new MetaTagSetter('property', 'og:url', canonicalHref))
-      .on('meta[name="twitter:title"]', new MetaTagSetter('name', 'twitter:title', copy.twitterTitle))
-      .on('meta[name="twitter:description"]', new MetaTagSetter('name', 'twitter:description', copy.twitterDescription))
-      .on('link[rel="canonical"]', new CanonicalSetter(canonicalHref));
-    return rewriter.transform(response);
+    return localizedPageRewriter(
+      locale,
+      SEO_COPY[locale],
+      canonicalHref,
+      alternatesFor(url.origin, '/'),
+      `${url.origin}/og/home-${locale}.png`,
+    ).transform(response);
+  }
+
+  const pageMatch = url.pathname.match(PAGE_PATH_RE);
+  if (pageMatch) {
+    const locale = (pageMatch[1] as Locale | undefined) ?? 'en';
+    const page = pageMatch[2] as StaticPage;
+    const response = await next();
+    const ctype = response.headers.get('content-type') ?? '';
+    if (!ctype.includes('text/html')) return response;
+    return localizedPageRewriter(
+      locale,
+      PAGE_COPY[page][locale],
+      `${url.origin}/${locale}/${page}`,
+      alternatesFor(url.origin, `/${page}`),
+      `${url.origin}/og/home-${locale}.png`,
+    ).transform(response);
   }
 
   const match = url.pathname.match(USERNAME_RE);
@@ -305,7 +410,12 @@ export const onRequest: PagesFunction<AuthEnv> = async (context) => {
     .on('meta[name="twitter:card"]', new MetaTagSetter('name', 'twitter:card', 'summary_large_image'))
     .on('meta[name="twitter:title"]', new MetaTagSetter('name', 'twitter:title', og.title))
     .on('meta[name="twitter:description"]', new MetaTagSetter('name', 'twitter:description', og.description))
-    .on('meta[name="twitter:image"]', new MetaTagSetter('name', 'twitter:image', og.image));
+    .on('meta[name="twitter:image"]', new MetaTagSetter('name', 'twitter:image', og.image))
+    // The static shell's canonical is the homepage, which told Google
+    // every profile was a duplicate of `/`. One URL per profile, no
+    // per-locale alternates (the content is the user's, not translated).
+    .on('link[rel="canonical"]', new CanonicalSetter(og.url))
+    .on('link[rel="alternate"]', new AlternateSetter(null));
 
   return rewriter.transform(response);
 };
