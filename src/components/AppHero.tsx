@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { examplePairsByLocale } from '../i18n/examples';
@@ -14,19 +15,44 @@ import styles from './AppHero.module.css';
  * can breathe. Quick starts (sample searches, near me) render separately
  * below the form — see HeroQuickStarts.
  */
+/* Last resolved sign-in state, used as the guess while the session
+ * request is in flight. Waiting for it rendered the form alone at the top
+ * and then dropped the hero in above it ~150ms later — a ~240px jump
+ * (CLS ≈ 0.3) on every anonymous load. */
+const SIGNED_IN_HINT_KEY = 'ac:signedInHint';
+
+function readSignedInHint(): boolean {
+  try {
+    return localStorage.getItem(SIGNED_IN_HINT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function AppHero() {
   const { midpoint, isLoading } = useApp();
   const { data: session, isPending: sessionPending } = useSession();
+  const isSignedIn = !!session?.user;
+
+  useEffect(() => {
+    if (sessionPending) return;
+    try {
+      if (isSignedIn) localStorage.setItem(SIGNED_IN_HINT_KEY, '1');
+      else localStorage.removeItem(SIGNED_IN_HINT_KEY);
+    } catch {
+      /* private mode — fall back to guessing anonymous */
+    }
+  }, [sessionPending, isSignedIn]);
 
   // Hide the hero as soon as any search is in flight, not just on
   // midpoint — otherwise on mobile the hero briefly remains stacked above
   // the map+sheet layout while geocoding runs.
   if (midpoint || isLoading) return null;
 
-  // Wait for session resolution so anonymous visitors don't briefly
-  // see the showcase, then watch it disappear when the session lands.
-  if (sessionPending) return null;
-  const isSignedIn = !!session?.user;
+  // Anonymous is the common case, so its hero renders immediately. Only
+  // a browser that was signed in last time waits for the real answer,
+  // so returning members don't see the showcase flash and vanish.
+  if (sessionPending && readSignedInHint()) return null;
 
   return (
     <section className={styles.hero}>

@@ -14,7 +14,7 @@ export function GithubLink() {
   return (
     <a
       className={styles.link}
-      href="https://github.com/nomadcafe/acoffeecom"
+      href="https://github.com/nomadcafe/acoffeemeetup"
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}

@@ -1,5 +1,4 @@
 import { useI18n } from '../context/I18nContext';
-import { useSession } from '../utils/authClient';
 import styles from './HomeFeatureShowcase.module.css';
 
 /**
@@ -9,15 +8,13 @@ import styles from './HomeFeatureShowcase.module.css';
  * first) and no longer recruits visitors into the paused Pro tier
  * (the "claim acoffee.com/yourname" CTA was the most recent removal).
  *
- * Hidden for signed-in users (their return visit is tool-first), and
- * naturally hidden during search since AppHero self-hides then.
+ * AppHero decides when this shows (anonymous, pre-search) — including the
+ * optimistic render while the session request is in flight. Don't gate on
+ * the session again here: a second wait re-introduces the late insert that
+ * pushed the form down on every load.
  */
 export function HomeFeatureShowcase() {
   const { t } = useI18n();
-  const { data: session, isPending } = useSession();
-
-  if (isPending) return null;
-  if (session?.user) return null;
 
   return (
     <section className={styles.wrap} aria-labelledby="showcase-title">
@@ -27,7 +24,7 @@ export function HomeFeatureShowcase() {
             {t('showcase.eyebrowFree')} ·{' '}
             <a
               className={styles.eyebrowLink}
-              href="https://github.com/nomadcafe/acoffeecom"
+              href="https://github.com/nomadcafe/acoffeemeetup"
               target="_blank"
               rel="noopener noreferrer"
             >
