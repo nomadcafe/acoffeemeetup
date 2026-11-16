@@ -11,6 +11,8 @@ ranked by each person's real travel time, not just the dot in the middle of the 
 
 English · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
+<sub>ACoffee is an independent project and is not affiliated with Buy Me a Coffee (buymeacoffee.com).</sub>
+
 <img src="public/og/home-en.png" alt="ACoffee — Meet halfway, over great coffee." width="720" />
 
 </div>

@@ -11,6 +11,8 @@
 
 [English](README.md) · 日本語 · [简体中文](README.zh-CN.md)
 
+<sub>ACoffee は個人の独立したプロジェクトで、Buy Me a Coffee（buymeacoffee.com）とは無関係です。</sub>
+
 <img src="public/og/home-ja.png" alt="ACoffee — ふたりの真ん中で、いいコーヒーを。" width="720" />
 
 </div>
