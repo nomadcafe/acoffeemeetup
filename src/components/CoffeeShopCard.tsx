@@ -361,16 +361,6 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
                     </span>
                   </>
                 ) : null}
-                <span className={styles.distanceSep} aria-hidden>
-                  ·
-                </span>
-                <span
-                  className={styles.distance}
-                  title={t('card.distanceM')}
-                >
-                  <span className={styles.distanceMarker} style={{ color: '#ff9800' }}>M</span>
-                  {shop.distanceFromMidpoint != null ? formatDistance(shop.distanceFromMidpoint) : '—'}
-                </span>
               </>
             )}
           </div>

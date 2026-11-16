@@ -203,11 +203,10 @@ export const messages: MessageDict = {
   'agentMode.quiet.hint': 'レビュー数が少なめの隠れた名店',
   'agentMode.now.label': '今すぐ',
   'agentMode.now.hint': '今開いている＋公平に移動できる場所',
-  'card.distanceM': '待ち合わせ中間地点からの距離（検索の基準はここです）',
   'card.distanceYou': '現在地からの直線距離',
   'card.distanceYouShort': '現在地',
   'card.distanceHint':
-    'M＝待ち合わせの中間地点（検索の中心）。A/Bは人それぞれの距離のため、二人が離れていると検索半径より大きく表示されることがあります。',
+    'それぞれの場所からの距離です。検索半径は中間地点から測るため、二人が離れているとA/Bは半径より大きく表示されることがあります。',
   'card.fairnessGap': '公平差（|A-B|）: {{gap}}',
   'card.openNow': '営業中',
   'card.closed': '閉店',

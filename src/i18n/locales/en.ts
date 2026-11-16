@@ -213,11 +213,10 @@ export const messages: MessageDict = {
   'agentMode.quiet.hint': 'Hidden gems with fewer reviews',
   'agentMode.now.label': 'Now',
   'agentMode.now.hint': 'Open right now, fair travel for everyone',
-  'card.distanceM': 'Distance from the meetup midpoint (search radius is measured from here)',
   'card.distanceYou': 'Straight-line distance from you',
   'card.distanceYouShort': 'You',
   'card.distanceHint':
-    'M = meetup midpoint (search center). A/B can be farther than your radius when the two addresses are far apart.',
+    'Distance from each person. A/B can be farther than your radius when the addresses are far apart — the radius is measured from the midpoint.',
   'card.fairnessGap': 'Fairness gap (|A-B|): {{gap}}',
   'card.openNow': 'Open Now',
   'card.closed': 'Closed',

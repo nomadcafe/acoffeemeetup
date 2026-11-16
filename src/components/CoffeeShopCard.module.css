@@ -330,28 +330,34 @@
   font-size: 0.75rem;
 }
 
+/* The summary is a bonus, not the result: when it fails (often on every
+ * card at once) it reads as a quiet aside rather than an amber warning. */
 .aiSummaryError {
-  color: #b45309;
-  background: #fff6e5;
+  color: var(--ac-text-muted);
+  font-size: 0.75rem;
+  padding-inline: 0;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: baseline;
+  gap: 0.4rem;
   flex-wrap: wrap;
 }
 
 .aiRetry {
-  padding: 0.25rem 0.55rem;
-  font-size: 0.72rem;
+  padding: 0;
+  font: inherit;
   font-weight: 600;
-  color: var(--ac-accent);
+  color: var(--ac-text-muted);
   background: transparent;
-  border: 1px solid var(--ac-border-strong);
-  border-radius: 6px;
+  border: 0;
+  text-decoration: underline;
+  text-decoration-color: var(--ac-border-strong);
+  text-underline-offset: 0.22em;
   cursor: pointer;
 }
 
 .aiRetry:hover {
-  background: rgba(111, 78, 55, 0.07);
+  color: var(--ac-text);
+  text-decoration-color: currentColor;
 }
 
 .aiSpinner {
