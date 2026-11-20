@@ -3,6 +3,11 @@ import { type AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { featuredCafes, user, visitedShops } from '../../_lib/db/schema';
 import { jsonError } from '../../_lib/jsonError';
+import {
+  normalizeSocialLinks,
+  resolveSocialLink,
+  type ResolvedSocialLink,
+} from '../../../src/utils/socialPlatforms';
 
 interface PublicShop {
   id: string;
@@ -11,10 +16,7 @@ interface PublicShop {
   visits: number;
 }
 
-interface SocialLink {
-  label: string;
-  url: string;
-}
+type SocialLink = ResolvedSocialLink;
 
 type FeaturedCafeRelation = 'owned' | 'favorite';
 
@@ -80,24 +82,11 @@ export interface PublicProfile {
   bookingEnabled: boolean;
 }
 
+/** Stored links (new or legacy shape) → resolved allowlisted links. */
 function parseSocialLinks(raw: string | null | undefined): SocialLink[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter(
-        (l): l is SocialLink =>
-          l &&
-          typeof l === 'object' &&
-          typeof (l as SocialLink).label === 'string' &&
-          typeof (l as SocialLink).url === 'string' &&
-          /^https?:\/\//i.test((l as SocialLink).url),
-      )
-      .slice(0, 5);
-  } catch {
-    return [];
-  }
+  return normalizeSocialLinks(raw ?? '[]')
+    .map(resolveSocialLink)
+    .filter((l): l is SocialLink => l !== null);
 }
 
 /**

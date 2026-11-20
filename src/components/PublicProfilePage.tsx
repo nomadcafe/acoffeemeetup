@@ -11,7 +11,7 @@ import { GithubLink } from './GithubLink';
 import { SocialIcon } from './SocialIcon';
 import { SyncIndicator } from './SyncIndicator';
 import { avatarGradient } from '../utils/avatarGradient';
-import { identifyBrand } from '../utils/socialBrand';
+import type { ResolvedSocialLink } from '../utils/socialPlatforms';
 import { safeHref } from '../utils/safeHref';
 import styles from './PublicProfilePage.module.css';
 
@@ -22,10 +22,8 @@ interface PublicShop {
   visits: number;
 }
 
-interface SocialLink {
-  label: string;
-  url: string;
-}
+/** Allowlisted platform + handle; `url` is server-built from a fixed template. */
+type SocialLink = ResolvedSocialLink;
 
 interface FeaturedCafeLinks {
   instagram: string | null;
@@ -254,22 +252,20 @@ function ProfileBody({ profile }: { profile: PublicProfile }) {
         {profile.bio ? <p className={styles.bio}>{profile.bio}</p> : null}
         {safeSocialLinks.length > 0 ? (
           <ul className={styles.socialLinkList}>
-            {safeSocialLinks.map((l) => {
-              const brand = identifyBrand(l.url);
-              return (
-                <li key={`${l.label}-${l.url}`}>
-                  <a
-                    className={styles.socialLink}
-                    href={l.url}
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                  >
-                    <SocialIcon brand={brand} className={styles.socialLinkIcon} />
-                    <span>{l.label}</span>
-                  </a>
-                </li>
-              );
-            })}
+            {safeSocialLinks.map((l) => (
+              <li key={l.platform}>
+                <a
+                  className={styles.socialLink}
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  title={l.display}
+                >
+                  <SocialIcon brand={l.platform} className={styles.socialLinkIcon} />
+                  <span>{l.name}</span>
+                </a>
+              </li>
+            ))}
           </ul>
         ) : null}
         <p className={styles.memberSince}>

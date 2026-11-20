@@ -1,4 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  SOCIAL_LINKS_MAX,
+  SOCIAL_PLATFORMS,
+  getPlatform,
+  normalizeSocialLinks,
+  parseSocialHandle,
+  type SocialPlatformId,
+} from '../utils/socialPlatforms';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { authClient, useSession } from '../utils/authClient';
@@ -1206,8 +1214,9 @@ function ProfileVisibilityCard({ hasUsername, username, initial }: VisibilityPro
  */
 interface SocialLinkDraft {
   _key: string;
-  label: string;
-  url: string;
+  platform: SocialPlatformId;
+  /** Raw input — a handle, "@handle", or a pasted profile URL. */
+  handle: string;
 }
 
 function freshKey(): string {
@@ -1215,20 +1224,13 @@ function freshKey(): string {
 }
 
 function parseInitialSocialLinks(raw: string | undefined): SocialLinkDraft[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter(
-        (l): l is { label: string; url: string } =>
-          l && typeof l === 'object' && typeof l.label === 'string' && typeof l.url === 'string',
-      )
-      .slice(0, 5)
-      .map((l) => ({ _key: freshKey(), label: l.label, url: l.url }));
-  } catch {
-    return [];
-  }
+  // Accepts both the current {platform, handle} rows and legacy {label, url}
+  // rows; legacy links that aren't on an allowlisted platform drop out.
+  return normalizeSocialLinks(raw ?? '[]').map((l) => ({
+    _key: freshKey(),
+    platform: l.platform,
+    handle: l.handle,
+  }));
 }
 
 type FeaturedCafeRelation = 'owned' | 'favorite';
@@ -1544,9 +1546,8 @@ function AvatarCard({ initialImage }: { initialImage: string | null }) {
 
 const DISPLAY_NAME_MAX = 50;
 const BIO_MAX = 160;
-const LINKS_MAX = 5;
-const LINK_LABEL_MAX = 30;
-const LINK_URL_MAX = 200;
+const LINKS_MAX = SOCIAL_LINKS_MAX;
+const LINK_HANDLE_MAX = 300;
 
 /**
  * Bio-link editor: display name + one-line bio + up to 5 social links. All
@@ -1680,7 +1681,7 @@ function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialL
    * the meaningful fields. _key is internal-only and intentionally
    * excluded from the comparison. */
   const linksKey = (arr: SocialLinkDraft[]) =>
-    JSON.stringify(arr.map((l) => [l.label, l.url]));
+    JSON.stringify(arr.map((l) => [l.platform, l.handle]));
   const lastSyncedLinks = useRef(linksKey(initialSocialLinks));
   const lastSyncedShow = useRef(initialShowSocialLinks);
   useEffect(() => {
@@ -1701,25 +1702,32 @@ function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialL
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSocialLinks, initialShowSocialLinks, busy]);
 
-  function setLinkField(idx: number, field: 'label' | 'url', value: string) {
-    setLinks((prev) => prev.map((l, i) => (i === idx ? { ...l, [field]: value } : l)));
+  function setLinkPlatform(idx: number, platform: SocialPlatformId) {
+    setLinks((prev) => prev.map((l, i) => (i === idx ? { ...l, platform } : l)));
+  }
+  function setLinkHandle(idx: number, handle: string) {
+    setLinks((prev) => prev.map((l, i) => (i === idx ? { ...l, handle } : l)));
   }
   function addLink() {
-    setLinks((prev) =>
-      prev.length >= LINKS_MAX ? prev : [...prev, { _key: freshKey(), label: '', url: '' }],
-    );
+    setLinks((prev) => {
+      if (prev.length >= LINKS_MAX) return prev;
+      // Default to the first platform not already in use.
+      const used = new Set(prev.map((l) => l.platform));
+      const next = SOCIAL_PLATFORMS.find((p) => !used.has(p.id));
+      if (!next) return prev;
+      return [...prev, { _key: freshKey(), platform: next.id, handle: '' }];
+    });
   }
   function removeLink(idx: number) {
     setLinks((prev) => prev.filter((_, i) => i !== idx));
   }
 
   function isLinkValid(l: SocialLinkDraft): boolean {
-    if (!l.label.trim() || !l.url.trim()) return false;
-    if (!/^https?:\/\//i.test(l.url.trim())) return false;
-    return true;
+    return parseSocialHandle(l.platform, l.handle) !== null;
   }
+  /** Typed something that doesn't parse — flag it (empty rows are just skipped). */
   function isLinkPartial(l: SocialLinkDraft): boolean {
-    return (l.label.trim() !== '' || l.url.trim() !== '') && !isLinkValid(l);
+    return l.handle.trim() !== '' && !isLinkValid(l);
   }
   const hasInvalidLink = links.some(isLinkPartial);
 
@@ -1729,10 +1737,12 @@ function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialL
     setStatus(null);
     // Local validity-trimmed copy with stable keys preserved — server gets
     // a stripped DTO without _key (the `wire` array below).
-    const cleanLinks = links
-      .map((l) => ({ _key: l._key, label: l.label.trim(), url: l.url.trim() }))
-      .filter((l) => isLinkValid(l));
-    const wire = cleanLinks.map(({ label, url }) => ({ label, url }));
+    // Normalise pasted URLs down to the bare handle before sending.
+    const cleanLinks = links.flatMap((l) => {
+      const handle = parseSocialHandle(l.platform, l.handle);
+      return handle ? [{ _key: l._key, platform: l.platform, handle }] : [];
+    });
+    const wire = cleanLinks.map(({ platform, handle }) => ({ platform, handle }));
     try {
       const res = await fetch('/api/account', {
         method: 'PATCH',
@@ -1769,37 +1779,49 @@ function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialL
             {t('account.socialLinksEmpty')}
           </p>
         ) : null}
-        {links.map((l, idx) => (
-          <div className={styles.linkRow} key={l._key}>
-            <input
-              type="text"
-              className={styles.linkLabelInput}
-              maxLength={LINK_LABEL_MAX}
-              placeholder={t('account.linkLabelPlaceholder')}
-              value={l.label}
-              onChange={(e) => setLinkField(idx, 'label', e.target.value)}
-              aria-label={t('account.linkLabelAria')}
-            />
-            <input
-              type="url"
-              className={styles.linkUrlInput}
-              maxLength={LINK_URL_MAX}
-              placeholder="https://…"
-              value={l.url}
-              onChange={(e) => setLinkField(idx, 'url', e.target.value)}
-              aria-invalid={isLinkPartial(l) || undefined}
-              aria-label={t('account.linkUrlAria')}
-            />
-            <button
-              type="button"
-              className={styles.linkRemove}
-              onClick={() => removeLink(idx)}
-              aria-label={t('account.linkRemoveAria')}
-            >
-              ×
-            </button>
-          </div>
-        ))}
+        {links.map((l, idx) => {
+          const usedElsewhere = new Set(
+            links.filter((_, i) => i !== idx).map((other) => other.platform),
+          );
+          const platform = getPlatform(l.platform);
+          return (
+            <div className={styles.linkRow} key={l._key}>
+              <select
+                className={styles.linkLabelInput}
+                value={l.platform}
+                onChange={(e) => setLinkPlatform(idx, e.target.value as SocialPlatformId)}
+                aria-label={t('account.linkPlatformAria')}
+              >
+                {SOCIAL_PLATFORMS.map((p) => (
+                  <option key={p.id} value={p.id} disabled={usedElsewhere.has(p.id)}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                className={styles.linkUrlInput}
+                maxLength={LINK_HANDLE_MAX}
+                placeholder={platform?.example ?? ''}
+                value={l.handle}
+                onChange={(e) => setLinkHandle(idx, e.target.value)}
+                aria-invalid={isLinkPartial(l) || undefined}
+                aria-label={t('account.linkHandleAria')}
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                className={styles.linkRemove}
+                onClick={() => removeLink(idx)}
+                aria-label={t('account.linkRemoveAria')}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
         {links.length < LINKS_MAX ? (
           <button type="button" className={styles.linkAdd} onClick={addLink}>
             + {t('account.linkAdd')}
@@ -1835,7 +1857,7 @@ function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialL
           {busy ? t('account.saving') : t('account.profileContentSave')}
         </button>
         {hasInvalidLink ? (
-          <p className={styles.errorMsg} role="alert">{t('account.linkInvalid')}</p>
+          <p className={styles.errorMsg} role="alert">{t('account.linkHandleInvalid')}</p>
         ) : status ? (
           <p
             className={status.kind === 'err' ? styles.errorMsg : styles.successMsg}

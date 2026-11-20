@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  SOCIAL_LINKS_MAX,
+  normalizeSocialLinks,
+  parseSocialHandle,
+  type SocialPlatformId,
+} from '../../../src/utils/socialPlatforms';
 import { asc, eq } from 'drizzle-orm';
 import { createAuth, type AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
@@ -104,18 +110,23 @@ export const onRequestDelete: PagesFunction<AuthEnv> = async ({ request, env }) 
   return new Response(null, { status: 204, headers });
 };
 
-/* http(s) only on social link URLs — the public profile page renders these
- * as user-clickable anchors, so blocking javascript: / data: / relative
- * URLs at the write boundary saves us a sanitisation pass on render. */
-const SocialLinkSchema = z.object({
-  label: z.string().trim().min(1).max(30),
-  url: z
-    .string()
-    .trim()
-    .url()
-    .max(200)
-    .refine((u) => /^https?:\/\//i.test(u), 'URL must start with http(s)'),
-});
+/* Social links are allowlisted platforms + a handle — never a free URL or
+ * label (see src/utils/socialPlatforms.ts). The handle may arrive as a
+ * pasted profile URL; it's normalised to the bare handle here, and the
+ * public URL is always rebuilt from the platform's fixed template. */
+const SocialLinkSchema = z
+  .object({
+    platform: z.string().max(20),
+    handle: z.string().trim().min(1).max(300),
+  })
+  .transform((l, ctx) => {
+    const handle = parseSocialHandle(l.platform, l.handle);
+    if (!handle) {
+      ctx.addIssue({ code: 'custom', message: `Invalid ${l.platform} handle` });
+      return z.NEVER;
+    }
+    return { platform: l.platform as SocialPlatformId, handle };
+  });
 
 /* "HH:MM" 24-hour clock — narrow enough to validate at the schema level so
  * downstream code can assume well-formed times. */
@@ -204,7 +215,7 @@ const PatchSchema = z.object({
   profilePublic: z.boolean().optional(),
   displayName: z.string().trim().max(50).nullable().optional(),
   bio: z.string().trim().max(160).nullable().optional(),
-  socialLinks: z.array(SocialLinkSchema).max(5).optional(),
+  socialLinks: z.array(SocialLinkSchema).max(SOCIAL_LINKS_MAX).optional(),
   showSocialLinks: z.boolean().optional(),
   /* Public-profile theme preset. Closed enum so we can guarantee the
    * matching CSS rule exists; unknown values would render as default
@@ -238,7 +249,7 @@ const PatchSchema = z.object({
 
 /** Patch toggles + bio fields for the user account. profilePublic is a
  *  boolean; displayName / bio are short strings (null clears them);
- *  socialLinks is a small array of {label, url}. Profile publish requires
+ *  socialLinks is a small array of {platform, handle}. Profile publish requires
  *  a username to exist already — there'd be no URL to host the page at
  *  otherwise. */
 export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) => {
@@ -270,7 +281,8 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) =
     patch.bio = input.bio ? input.bio : null;
   }
   if (input.socialLinks !== undefined) {
-    patch.socialLinks = JSON.stringify(input.socialLinks);
+    // normalize() dedupes by platform and re-checks every handle.
+    patch.socialLinks = JSON.stringify(normalizeSocialLinks(input.socialLinks));
   }
   if (input.showSocialLinks !== undefined) patch.showSocialLinks = input.showSocialLinks;
   if (input.themePreset !== undefined) patch.themePreset = input.themePreset;
