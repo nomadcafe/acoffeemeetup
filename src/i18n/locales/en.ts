@@ -578,6 +578,8 @@ export const messages: MessageDict = {
   'account.calendarDisconnect': 'Disconnect',
   'account.calendarSaved': 'Saved.',
   'account.calendarSaveFailed': "Couldn't read that calendar URL. Double-check it's the secret iCal link and try again.",
+  'account.calendarUnsupported': 'Only calendar links from {{providers}} are supported. Copy the private / secret iCal address from one of those.',
+  'account.calendarSupported': 'Supported: {{providers}}.',
   'profile.heroAria': "User's coffee profile",
   'profile.memberSince': 'Brewing since {{date}}',
   'profile.featuredCafesTitle': 'Featured cafés',

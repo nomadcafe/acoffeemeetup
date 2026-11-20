@@ -560,6 +560,8 @@ export const messages: MessageDict = {
   'account.calendarDisconnect': '解除连接',
   'account.calendarSaved': '已保存。',
   'account.calendarSaveFailed': '读取 iCal URL 失败，请确认这是私密日历链接后重试。',
+  'account.calendarUnsupported': '目前只支持以下日历服务的链接：{{providers}}。请从其中一家复制"私密 iCal 地址"。',
+  'account.calendarSupported': '目前支持：{{providers}}。',
   'profile.heroAria': '咖啡资料页',
   'profile.memberSince': '从 {{date}} 开始打卡',
   'profile.featuredCafesTitle': '主推咖啡店',

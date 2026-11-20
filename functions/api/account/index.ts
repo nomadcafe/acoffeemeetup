@@ -19,7 +19,7 @@ import {
   geocodeAddress,
   lookupTimezone,
 } from '../../_lib/googleMaps';
-import { fetchBusyWindows } from '../../_lib/icsBusy';
+import { fetchBusyWindows, UnsupportedCalendarHostError } from '../../_lib/icsBusy';
 import { verifyOwnerByEmailDomain } from '../../_lib/ownerVerify';
 
 /**
@@ -349,6 +349,9 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env, wai
         const now = Date.now();
         await fetchBusyWindows(next, now, now + 7 * 86_400_000);
       } catch (e) {
+        if (e instanceof UnsupportedCalendarHostError) {
+          return jsonErrorCoded(e.message, 'calendar_host_not_supported', 400);
+        }
         return jsonError(
           `Couldn't read that calendar — ${e instanceof Error ? e.message : 'unknown error'}`,
           400,

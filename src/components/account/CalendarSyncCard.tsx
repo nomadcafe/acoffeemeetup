@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '../../context/I18nContext';
+import { CALENDAR_PROVIDER_NAMES, isSupportedCalendarUrl } from '../../utils/calendarHosts';
 import styles from '../AccountPage.module.css';
 import { type StatusBanner, useAccountRefresh, useAutoDismissOk, useReportDirty } from './shared';
 
@@ -47,6 +48,8 @@ export function CalendarSyncCard({
   const [savedUrl, setSavedUrl] = useState(initialUrl);
   useReportDirty('account-calendar', url.trim() !== savedUrl.trim());
   const dirty = url.trim() !== savedUrl.trim();
+  // Same allowlist the server enforces — say so before a round trip.
+  const unsupported = url.trim() !== '' && !isSupportedCalendarUrl(url);
 
   async function send(payload: { busyCalendarIcsUrl: string | null }) {
     setBusy(true);
@@ -58,10 +61,13 @@ export function CalendarSyncCard({
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        const j = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
         setStatus({
           kind: 'err',
-          message: j.error ?? t('account.calendarSaveFailed'),
+          message:
+            j.code === 'calendar_host_not_supported'
+              ? t('account.calendarUnsupported', { providers: CALENDAR_PROVIDER_NAMES })
+              : (j.error ?? t('account.calendarSaveFailed')),
         });
         return;
       }
@@ -106,8 +112,18 @@ export function CalendarSyncCard({
           placeholder={t('account.calendarUrlPlaceholder')}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
+          aria-invalid={unsupported || undefined}
+          aria-describedby={unsupported ? 'calendar-unsupported' : undefined}
         />
-        <span className={styles.usernameHint}>{t('account.calendarUrlHelp')}</span>
+        {unsupported ? (
+          <span id="calendar-unsupported" className={styles.errorMsg} role="alert">
+            {t('account.calendarUnsupported', { providers: CALENDAR_PROVIDER_NAMES })}
+          </span>
+        ) : null}
+        <span className={styles.usernameHint}>
+          {t('account.calendarUrlHelp')}{' '}
+          {t('account.calendarSupported', { providers: CALENDAR_PROVIDER_NAMES })}
+        </span>
       </label>
 
       {lastError ? (
@@ -140,7 +156,7 @@ export function CalendarSyncCard({
           type="button"
           className={styles.saveButton}
           onClick={() => void send({ busyCalendarIcsUrl: url.trim() ? url.trim() : null })}
-          disabled={busy || (!dirty && initialUrl.trim() === '')}
+          disabled={busy || unsupported || (!dirty && initialUrl.trim() === '')}
         >
           {busy ? t('account.saving') : t('account.calendarSave')}
         </button>

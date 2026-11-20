@@ -1,3 +1,5 @@
+import { isAllowedCalendarHost } from '../../src/utils/calendarHosts';
+
 /**
  * Tiny iCal parser specialised for "extract busy windows in a date range."
  * We don't need full RFC 5545 — only the subset that matters when an
@@ -298,6 +300,13 @@ const ICS_FETCH_TIMEOUT_MS = 5_000;
 const ICS_MAX_BYTES = 512 * 1024;
 const ICS_MAX_REDIRECTS = 3;
 
+export class UnsupportedCalendarHostError extends Error {
+  constructor() {
+    super('Calendar provider not supported');
+    this.name = 'UnsupportedCalendarHostError';
+  }
+}
+
 /** Reject URLs a calendar feed has no business living at: non-https,
  *  localhost, raw IP literals and internal-looking hostnames. Workers
  *  can't reach private networks anyway; this keeps the fetcher from
@@ -305,6 +314,11 @@ const ICS_MAX_REDIRECTS = 3;
 function assertFetchableCalendarUrl(url: URL): void {
   if (url.protocol !== 'https:') {
     throw new Error('Calendar URL must use https');
+  }
+  // Major calendar providers only — see src/utils/calendarHosts.ts. The
+  // checks below are kept as defence in depth.
+  if (!isAllowedCalendarHost(url.hostname)) {
+    throw new UnsupportedCalendarHostError();
   }
   const host = url.hostname.toLowerCase().replace(/\.$/, '');
   const isIpLiteral = /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith('[');

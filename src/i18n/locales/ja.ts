@@ -564,6 +564,8 @@ export const messages: MessageDict = {
   'account.calendarDisconnect': '解除',
   'account.calendarSaved': '保存しました。',
   'account.calendarSaveFailed': 'カレンダー URL を読み込めませんでした。秘密の iCal リンクか確認してください。',
+  'account.calendarUnsupported': '対応しているのは {{providers}} のカレンダーリンクのみです。いずれかから「非公開 iCal アドレス」をコピーしてください。',
+  'account.calendarSupported': '対応サービス：{{providers}}。',
   'profile.heroAria': 'コーヒープロフィール',
   'profile.memberSince': '{{date}} から記録中',
   'profile.featuredCafesTitle': 'お気に入りのカフェ',
