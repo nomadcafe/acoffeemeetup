@@ -72,6 +72,11 @@ export const messages: MessageDict = {
   'heroSignedIn.copyLinkAria': 'プロフィールリンクをコピー',
   'heroSignedIn.copied': 'コピーしました！',
   'heroSignedIn.claimHandle': 'acoffee.com ハンドルを取得',
+  'heroSignedIn.finishProfile': 'ページを仕上げましょう：{{items}}',
+  'heroSignedIn.todoPublic': '公開する',
+  'heroSignedIn.todoAvatar': '写真を追加',
+  'heroSignedIn.todoBasic': '名前か自己紹介を入力',
+  'heroSignedIn.todoJoiner': '、',
   'heroSignedIn.pendingRequestOne': '新しい予約リクエストが 1 件',
   'heroSignedIn.pendingRequestMany': '新しい予約リクエストが {{count}} 件',
   'heroSignedIn.nextCoffee': '{{when}} · {{name}} さんと {{cafe}} でコーヒー',
@@ -203,7 +208,8 @@ export const messages: MessageDict = {
   'card.distanceYouShort': '現在地',
   'card.distanceHint':
     'それぞれの場所からの距離です。検索半径は中間地点から測るため、二人が離れているとA/Bは半径より大きく表示されることがあります。',
-  'card.fairnessGap': '公平差（|A-B|）: {{gap}}',
+  'card.fairnessGap': '差 {{gap}}',
+  'card.ratingAria': '評価 {{rating}}（{{count}} 件のレビュー）',
   'card.openNow': '営業中',
   'card.closed': '閉店',
 

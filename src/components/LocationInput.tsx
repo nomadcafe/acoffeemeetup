@@ -8,6 +8,7 @@ import {
 } from '../hooks/useAddressAutocomplete';
 import { SearchFilters } from './SearchFilters';
 import styles from './LocationInput.module.css';
+import { PARTY_COLORS } from '../utils/partyColors';
 
 interface LocationInputProps {
   /** Pre-search: put the filters on the "add another person" row inside
@@ -93,7 +94,7 @@ export function LocationInput({ inlineFilters = false }: LocationInputProps) {
 
       <div className={styles.tripCard}>
         <div className={styles.tripRow}>
-          <span className={styles.tripMarker} style={{ backgroundColor: '#4285f4' }} aria-hidden>
+          <span className={styles.tripMarker} style={{ backgroundColor: PARTY_COLORS.a }} aria-hidden>
             A
           </span>
           <AddressField
@@ -131,7 +132,7 @@ export function LocationInput({ inlineFilters = false }: LocationInputProps) {
         </div>
 
         <div className={styles.tripRow}>
-          <span className={styles.tripMarker} style={{ backgroundColor: '#34a853' }} aria-hidden>
+          <span className={styles.tripMarker} style={{ backgroundColor: PARTY_COLORS.b }} aria-hidden>
             B
           </span>
           <AddressField
@@ -148,7 +149,7 @@ export function LocationInput({ inlineFilters = false }: LocationInputProps) {
 
         {showC ? (
           <div className={styles.tripRow}>
-            <span className={styles.tripMarker} style={{ backgroundColor: '#a142f4' }} aria-hidden>
+            <span className={styles.tripMarker} style={{ backgroundColor: PARTY_COLORS.c }} aria-hidden>
               C
             </span>
             <AddressField

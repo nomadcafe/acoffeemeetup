@@ -13,15 +13,10 @@ import { isToday } from '../utils/streak';
 import { fetchAiSummary, getCachedSummary } from '../utils/aiSummary';
 import { formatMeetAt } from '../utils/openingHours';
 import styles from './CoffeeShopCard.module.css';
+import { PARTY_COLORS } from '../utils/partyColors';
 
 interface CoffeeShopCardProps {
   shop: CoffeeShop;
-  /** When true, render a one-shot tooltip pointing at the ☕ visit button.
-   *  Parent (CoffeeShopList) only sets this on the first card and only when
-   *  the user has zero passport visits. Calls `onDismissVisitHint` when the
-   *  user explicitly closes the hint. */
-  showVisitHint?: boolean;
-  onDismissVisitHint?: () => void;
 }
 
 function formatDistance(meters: number): string {
@@ -40,16 +35,36 @@ function formatDuration(seconds: number): string {
   return rem === 0 ? `${hours} hr` : `${hours} hr ${rem} min`;
 }
 
-/** Five stars with a gold overlay clipped to the exact rating, so 4.8
- *  reads as nearly five rather than "4½". Decorative — the numeric value
- *  sits right beside it. */
-function Stars({ rating }: { rating: number }) {
-  const pct = Math.max(0, Math.min(100, (rating / 5) * 100));
+/** One-line address for the card: drop the country and postcode Google
+ *  puts at either end ("日本、〒135-0024 東京都…", "China, Beijing…",
+ *  "…, Tokyo 150-0041, Japan", "…号 邮政编码: 100020"). The full address
+ *  stays one tap away in
+ *  "Open in Maps". */
+function shortAddress(address: string): string {
+  return address
+    .replace(/^(中国|中國|日本|China|Japan)[、,，\s]*/i, '')
+    .replace(/^〒?\d{3}-\d{4}\s*/, '')
+    .replace(/[,，\s]*(中国|中國|日本|China|Japan)$/i, '')
+    .replace(/\s+\d{3}-\d{4}$/, '')
+    // Chinese results end with "邮政编码: 100020"; Japanese sometimes "郵便番号…".
+    .replace(/[\s,，]*(邮政编码|郵便番号|郵遞區號)[:：]?\s*[\d-]+$/, '')
+    .trim();
+}
+
+function PinIcon() {
   return (
-    <span className={styles.stars} aria-hidden>
-      <span className={styles.starsBase}>★★★★★</span>
-      <span className={styles.starsFill} style={{ width: `${pct}%` }}>★★★★★</span>
-    </span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </svg>
+  );
+}
+
+function DirectionsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 11l18-8-8 18-2-8-8-2z" />
+    </svg>
   );
 }
 
@@ -61,11 +76,7 @@ type SummaryState =
   | { kind: 'error' }
   | { kind: 'rateLimited'; retryAfterSec: number };
 
-export const CoffeeShopCard = memo(function CoffeeShopCard({
-  shop,
-  showVisitHint = false,
-  onDismissVisitHint,
-}: CoffeeShopCardProps) {
+export const CoffeeShopCard = memo(function CoffeeShopCard({ shop }: CoffeeShopCardProps) {
   const { t, locale } = useI18n();
   const {
     meetAt,
@@ -223,164 +234,23 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
         <div className={styles.visitedBadge}>{visitedLabel}</div>
       )}
 
-      <div className={styles.header}>
-        <div className={styles.info}>
-          <h3 className={styles.name}>{shop.name}</h3>
-          <p className={styles.address}>{shop.address}</p>
-          <span className={styles.mapsLinks}>
-            <a
-              className={styles.mapsLink}
-              href={getOpenInGoogleMapsUrl(shop)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {t('card.openMaps')}
-            </a>
-            {/* Directions = "I picked this place, now how do I get
-                there?" — the obvious next step from a result list.
-                Closes a real conversion gap on the search → meetup
-                path; both adjacent projects we researched ship one. */}
-            <a
-              className={styles.directionsLink}
-              href={getDirectionsUrl({
-                placeId: shop.id,
-                name: shop.name,
-                address: shop.address,
-                lat: shop.lat,
-                lng: shop.lng,
-              })}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {t('card.getDirections')}
-            </a>
-          </span>
-          {ownerAttribution ? (
-            <a
-              className={styles.ownerChip}
-              href={`/${ownerAttribution.username}`}
-              onClick={(e) => e.stopPropagation()}
-              title={t('card.ownerChipTitle', {
-                handle: ownerAttribution.displayName ?? `@${ownerAttribution.username}`,
-              })}
-            >
-              {/* Relation flips the chip's meaning: 'owned' = the linked
-                  user runs this place ("operated by …"); 'favorite' = a
-                  user picked it as a personal favorite. The ownership
-                  case is the higher-signal one and we already tie-break
-                  toward it server-side, so the chip text follows. */}
-              ↗{' '}
-              {t(
-                ownerAttribution.relation === 'owned'
-                  ? 'card.ownerChipOwned'
-                  : 'card.ownerChipFavorite',
-                { handle: `@${ownerAttribution.username}` },
-              )}
-            </a>
-          ) : null}
-        </div>
+      {/* Row 1 — name + compact rating. */}
+      <div className={styles.headRow}>
+        <h3 className={styles.name}>{shop.name}</h3>
+        <span
+          className={styles.ratingCompact}
+          aria-label={t('card.ratingAria', { rating: shop.rating.toFixed(1), count: shop.userRatingsTotal })}
+        >
+          <span className={styles.ratingStar} aria-hidden>★</span>
+          <span className={styles.ratingValue}>{shop.rating.toFixed(1)}</span>
+          <span className={styles.reviews} aria-hidden>({shop.userRatingsTotal})</span>
+        </span>
       </div>
 
-      <div className={styles.details}>
-        <div className={styles.rating}>
-          <Stars rating={shop.rating} />
-          <span className={styles.ratingValue}>{shop.rating.toFixed(1)}</span>
-          <span className={styles.reviews}>({t('card.reviews', { count: shop.userRatingsTotal })})</span>
-        </div>
-
-        <div className={styles.distanceGroup}>
-          {/* The A/B/M legend lives in the tooltip; as an always-on line
-              it was the noisiest text on every card. */}
-          <div className={styles.distances} title={isNearby ? undefined : t('card.distanceHint')}>
-            {isNearby ? (
-              <span
-                className={styles.distance}
-                title={t('card.distanceYou')}
-              >
-                <span className={styles.distanceMarker} style={{ color: '#1a73e8' }}>
-                  {t('card.distanceYouShort')}
-                </span>
-                {shop.distanceFromMidpoint != null ? formatDistance(shop.distanceFromMidpoint) : '—'}
-              </span>
-            ) : hasFullDurations ? (
-              <>
-                <span className={styles.distance} title={t('card.distanceA')}>
-                  <span className={styles.distanceMarker} style={{ color: '#4285f4' }}>A</span>
-                  {formatDuration(shop.durationFromA!)}
-                </span>
-                <span className={styles.distanceSep} aria-hidden>·</span>
-                <span className={styles.distance} title={t('card.distanceB')}>
-                  <span className={styles.distanceMarker} style={{ color: '#34a853' }}>B</span>
-                  {formatDuration(shop.durationFromB!)}
-                </span>
-                {shop.durationFromC != null ? (
-                  <>
-                    <span className={styles.distanceSep} aria-hidden>·</span>
-                    <span className={styles.distance} title={t('card.distanceC')}>
-                      <span className={styles.distanceMarker} style={{ color: '#a142f4' }}>C</span>
-                      {formatDuration(shop.durationFromC)}
-                    </span>
-                  </>
-                ) : null}
-                {fairnessScore != null ? (
-                  <>
-                    <span className={styles.distanceSep} aria-hidden>·</span>
-                    <span
-                      className={styles.fairnessBadge}
-                      title={t('card.fairnessTooltip')}
-                      aria-label={t('card.fairnessAria', { score: fairnessScore })}
-                    >
-                      ☕ {fairnessScore}
-                    </span>
-                  </>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <span
-                  className={styles.distance}
-                  title={t('card.distanceA')}
-                >
-                  <span className={styles.distanceMarker} style={{ color: '#4285f4' }}>A</span>
-                  {shop.distanceFromA != null ? formatDistance(shop.distanceFromA) : '—'}
-                </span>
-                <span className={styles.distanceSep} aria-hidden>
-                  ·
-                </span>
-                <span
-                  className={styles.distance}
-                  title={t('card.distanceB')}
-                >
-                  <span className={styles.distanceMarker} style={{ color: '#34a853' }}>B</span>
-                  {shop.distanceFromB != null ? formatDistance(shop.distanceFromB) : '—'}
-                </span>
-                {shop.distanceFromC != null ? (
-                  <>
-                    <span className={styles.distanceSep} aria-hidden>·</span>
-                    <span
-                      className={styles.distance}
-                      title={t('card.distanceC')}
-                    >
-                      <span className={styles.distanceMarker} style={{ color: '#a142f4' }}>C</span>
-                      {formatDistance(shop.distanceFromC)}
-                    </span>
-                  </>
-                ) : null}
-              </>
-            )}
-          </div>
-          {!isNearby && searchSortMode === 'fairness' && fairnessGap != null ? (
-            <p className={styles.distanceHint}>
-              {t('card.fairnessGap', {
-                gap: hasFullDurations ? formatDuration(fairnessGap) : formatDistance(fairnessGap),
-              })}
-            </p>
-          ) : null}
-        </div>
-
-        {shop.isOpen !== undefined && (
+      {/* Row 2 — short address + open status. */}
+      <p className={styles.subLine}>
+        <span className={styles.address} title={shop.address}>{shortAddress(shop.address)}</span>
+        {shop.isOpen !== undefined ? (
           <span className={`${styles.openStatus} ${shop.isOpen ? styles.open : styles.closed}`}>
             {meetAt
               ? t(shop.isOpen ? 'card.openAt' : 'card.closedAt', { time: formatMeetAt(meetAt, locale) })
@@ -388,43 +258,105 @@ export const CoffeeShopCard = memo(function CoffeeShopCard({
                 ? t('card.openNow')
                 : t('card.closed')}
           </span>
+        ) : null}
+      </p>
+
+      {ownerAttribution ? (
+        <a
+          className={styles.ownerChip}
+          href={`/${ownerAttribution.username}`}
+          onClick={(e) => e.stopPropagation()}
+          title={t('card.ownerChipTitle', {
+            handle: ownerAttribution.displayName ?? `@${ownerAttribution.username}`,
+          })}
+        >
+          {/* 'owned' = the linked user runs this place; 'favorite' = a user
+              picked it as a personal favourite. */}
+          ↗{' '}
+          {t(
+            ownerAttribution.relation === 'owned' ? 'card.ownerChipOwned' : 'card.ownerChipFavorite',
+            { handle: `@${ownerAttribution.username}` },
+          )}
+        </a>
+      ) : null}
+
+      {/* Row 3 — how far each person goes, and the gap between them. */}
+      <div className={styles.distances} title={isNearby ? undefined : t('card.distanceHint')}>
+        {isNearby ? (
+          <span className={styles.distance} title={t('card.distanceYou')}>
+            <span className={styles.distanceMarker} style={{ color: PARTY_COLORS.you }}>
+              {t('card.distanceYouShort')}
+            </span>
+            {shop.distanceFromMidpoint != null ? formatDistance(shop.distanceFromMidpoint) : '—'}
+          </span>
+        ) : (
+          <>
+            <span className={styles.distance} title={t('card.distanceA')}>
+                <span className={styles.distanceMarker} style={{ color: PARTY_COLORS.a }}>A</span>
+                {hasFullDurations ? formatDuration(shop.durationFromA!) : shop.distanceFromA != null ? formatDistance(shop.distanceFromA) : '—'}
+              </span>
+            <span className={styles.distance} title={t('card.distanceB')}>
+                <span className={styles.distanceMarker} style={{ color: PARTY_COLORS.b }}>B</span>
+                {hasFullDurations ? formatDuration(shop.durationFromB!) : shop.distanceFromB != null ? formatDistance(shop.distanceFromB) : '—'}
+              </span>
+            {shop.distanceFromC != null || shop.durationFromC != null ? (
+              <span className={styles.distance} title={t('card.distanceC')}>
+                <span className={styles.distanceMarker} style={{ color: PARTY_COLORS.c }}>C</span>
+                {hasFullDurations && shop.durationFromC != null ? formatDuration(shop.durationFromC) : shop.distanceFromC != null ? formatDistance(shop.distanceFromC) : '—'}
+              </span>
+            ) : null}
+            {searchSortMode === 'fairness' && fairnessGap != null ? (
+              <span
+                className={styles.gap}
+                title={fairnessScore != null ? t('card.fairnessTooltip') : undefined}
+                aria-label={fairnessScore != null ? t('card.fairnessAria', { score: fairnessScore }) : undefined}
+              >
+                {t('card.fairnessGap', {
+                  gap: hasFullDurations ? formatDuration(fairnessGap) : formatDistance(fairnessGap),
+                })}
+              </span>
+            ) : null}
+          </>
         )}
       </div>
 
       <AiSummary t={t} state={summary} onLoad={loadSummary} />
 
-      {/* Actions live in a footer row so the name and address get the
-          card's full width instead of sharing it with three buttons. */}
-      {showVisitHint ? (
-        <div className={styles.visitHint} role="status">
-          <span className={styles.visitHintBody}>{t('visitHint.body')}</span>
-          <button
-            type="button"
-            className={styles.visitHintDismiss}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDismissVisitHint?.();
-            }}
-            aria-label={t('visitHint.dismissAria')}
-          >
-            ✕
-          </button>
-        </div>
-      ) : null}
+      {/* Footer — log / save, map + directions as icons, and the outward
+          action (Propose in meetup mode, Share in nearby mode) on the right. */}
       <div className={styles.actions}>
         <VisitedButton shop={shop} />
         <StarButton shop={shop} />
-        {/* Share vs Propose: one or the other based on mode, never
-            both. In meetup mode (≥2 parties) the user almost always
-            wants to send a concrete "let's go here at this time"
-            proposal — the search-link Share is redundant. In nearby
-            (single-party) mode proposals make no sense, so a
-            search-link Share is what's useful. */}
-        {searchMode === 'nearby' ? (
-          <ShareButton shop={shop} />
-        ) : (
-          <ProposeButton shop={shop} />
-        )}
+        <a
+          className={styles.iconLink}
+          href={getOpenInGoogleMapsUrl(shop)}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={t('card.openMaps')}
+          title={t('card.openMaps')}
+        >
+          <PinIcon />
+        </a>
+        <a
+          className={styles.iconLink}
+          href={getDirectionsUrl({
+            placeId: shop.id,
+            name: shop.name,
+            address: shop.address,
+            lat: shop.lat,
+            lng: shop.lng,
+          })}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={t('card.getDirections')}
+          title={t('card.getDirections')}
+        >
+          <DirectionsIcon />
+        </a>
+        <span className={styles.actionsSpacer} aria-hidden />
+        {searchMode === 'nearby' ? <ShareButton shop={shop} /> : <ProposeButton shop={shop} />}
       </div>
 
       {promptForVisit != null ? (
@@ -481,7 +413,8 @@ function AiSummary({
     return <p className={styles.aiSummaryText}>{state.text}</p>;
   }
   if (state.kind === 'empty') {
-    return <p className={styles.aiSummaryEmpty}>{t('card.aiSummaryNoReviews')}</p>;
+    // No reviews to summarise — show nothing rather than an empty box.
+    return null;
   }
   if (state.kind === 'rateLimited') {
     // No Retry button — an immediate retry would just hit the limiter again.

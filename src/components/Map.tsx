@@ -9,6 +9,7 @@ import { visitedSnapshotToCoffeeShop } from '../hooks/useVisitedShops';
 import { formatRelativeTime } from '../utils/relativeTime';
 import { AdvancedMarker } from './AdvancedMarker';
 import styles from './Map.module.css';
+import { PARTY_COLORS } from '../utils/partyColors';
 
 // AdvancedMarkerElement requires a Map ID (Google Cloud Console → Maps → Map
 // IDs). Without it, markers render blank. Log once at startup if missing so
@@ -264,25 +265,25 @@ export function Map() {
       >
         {youDotPosition ? (
           <AdvancedMarker position={youDotPosition} title={t('map.youHere')} zIndex={1} anchor="center">
-            <CircleDot size={26} color="#1a73e8" opacity={0.9} />
+            <CircleDot size={26} color={PARTY_COLORS.you} opacity={0.9} />
           </AdvancedMarker>
         ) : null}
 
         {locationA && (
           <AdvancedMarker position={{ lat: locationA.lat, lng: locationA.lng }} anchor="center">
-            <CircleDot size={28} color="#4285f4" label="A" />
+            <CircleDot size={28} color={PARTY_COLORS.a} label="A" />
           </AdvancedMarker>
         )}
 
         {locationB && (
           <AdvancedMarker position={{ lat: locationB.lat, lng: locationB.lng }} anchor="center">
-            <CircleDot size={28} color="#34a853" label="B" />
+            <CircleDot size={28} color={PARTY_COLORS.b} label="B" />
           </AdvancedMarker>
         )}
 
         {locationC && (
           <AdvancedMarker position={{ lat: locationC.lat, lng: locationC.lng }} anchor="center">
-            <CircleDot size={28} color="#a142f4" label="C" />
+            <CircleDot size={28} color={PARTY_COLORS.c} label="C" />
           </AdvancedMarker>
         )}
 

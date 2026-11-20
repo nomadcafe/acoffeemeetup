@@ -78,6 +78,11 @@ export const messages: MessageDict = {
   'heroSignedIn.copyLinkAria': 'Copy your profile link',
   'heroSignedIn.copied': 'Copied!',
   'heroSignedIn.claimHandle': 'Claim your acoffee.com handle',
+  'heroSignedIn.finishProfile': 'Finish your page: {{items}}',
+  'heroSignedIn.todoPublic': 'make it public',
+  'heroSignedIn.todoAvatar': 'add a photo',
+  'heroSignedIn.todoBasic': 'add your name or a bio',
+  'heroSignedIn.todoJoiner': ', ',
   'heroSignedIn.pendingRequestOne': '1 new booking request',
   'heroSignedIn.pendingRequestMany': '{{count}} new booking requests',
   'heroSignedIn.nextCoffee': '{{when}} · Coffee with {{name}} at {{cafe}}',
@@ -217,7 +222,8 @@ export const messages: MessageDict = {
   'card.distanceYouShort': 'You',
   'card.distanceHint':
     'Distance from each person. A/B can be farther than your radius when the addresses are far apart — the radius is measured from the midpoint.',
-  'card.fairnessGap': 'Fairness gap (|A-B|): {{gap}}',
+  'card.fairnessGap': '{{gap}} apart',
+  'card.ratingAria': 'Rated {{rating}} from {{count}} reviews',
   'card.openNow': 'Open Now',
   'card.closed': 'Closed',
 

@@ -134,6 +134,11 @@ export async function searchCoffeeShops(
       includedPrimaryTypes,
       maxResultCount: 20,
       rankPreference: SearchNearbyRankPreference.DISTANCE,
+      // Names / addresses in the site's language (the i18n provider keeps
+      // <html lang> in sync). Without it Google falls back to the browser
+      // language, so a Chinese UI on an English browser showed pinyin
+      // addresses.
+      language: document.documentElement.lang || undefined,
     };
 
     const { places } = await Place.searchNearby(request);

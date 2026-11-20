@@ -23,6 +23,15 @@ export function ReportProfile({ username }: { username: string }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  function close() {
+    setOpen(false);
+    setReason(null);
+    setDetails('');
+    setPhase('idle');
+    setErrorMsg(null);
+    triggerRef.current?.focus();
+  }
+
   // Focus into the dialog on open, Esc closes, focus returns to the link.
   useEffect(() => {
     if (!open) return;
@@ -34,15 +43,6 @@ export function ReportProfile({ username }: { username: string }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, phase]);
-
-  function close() {
-    setOpen(false);
-    setReason(null);
-    setDetails('');
-    setPhase('idle');
-    setErrorMsg(null);
-    triggerRef.current?.focus();
-  }
 
   async function submit() {
     if (!reason || phase === 'sending') return;

@@ -203,8 +203,24 @@ export function CoffeeShopList() {
           })}
         </p>
       ) : null}
+      {/* One-shot passport hint for people with an empty passport. Sits
+          above the list rather than inside the first card, so it doesn't
+          make that card taller than the rest. */}
+      {showVisitHintForFirst ? (
+        <div className={styles.visitHint} role="status">
+          <span className={styles.visitHintBody}>{t('visitHint.body')}</span>
+          <button
+            type="button"
+            className={styles.visitHintDismiss}
+            onClick={dismissVisitHint}
+            aria-label={t('visitHint.dismissAria')}
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
       <div className={styles.list}>
-        {coffeeShops.map((shop, index) => (
+        {coffeeShops.map((shop) => (
           <div
             key={shop.id}
             ref={(el) => {
@@ -232,11 +248,7 @@ export function CoffeeShopList() {
               }
             }}
           >
-            <CoffeeShopCard
-              shop={shop}
-              showVisitHint={index === 0 && showVisitHintForFirst}
-              onDismissVisitHint={dismissVisitHint}
-            />
+            <CoffeeShopCard shop={shop} />
           </div>
         ))}
       </div>

@@ -6,7 +6,7 @@ import { usePassportStats } from '../hooks/usePassportStats';
 import { streakFireEmoji } from '../utils/streak';
 import { formatRelativeTime } from '../utils/relativeTime';
 import { buildLocalizedPathname } from '../i18n/detectLocale';
-import { ACCOUNT_SETUP_PATH, BOOKINGS_PATH, PASSPORT_PATH } from '../routes';
+import { ACCOUNT_PATH, ACCOUNT_SETUP_PATH, BOOKINGS_PATH, PASSPORT_PATH } from '../routes';
 import { avatarGradient } from '../utils/avatarGradient';
 import styles from './HeroSignedIn.module.css';
 
@@ -14,7 +14,10 @@ interface SessionUserView {
   name?: string;
   email?: string;
   username?: string | null;
+  displayName?: string | null;
+  bio?: string | null;
   image?: string | null;
+  profilePublic?: boolean;
 }
 
 /* Subset of /api/bookings response we actually consume here. The full
@@ -67,7 +70,9 @@ export function HeroSignedIn() {
 
   const sessionUser = (session?.user ?? undefined) as SessionUserView | undefined;
   const username = sessionUser?.username?.trim() || '';
-  const handle = username || sessionUser?.name?.split(' ')[0] || '';
+  // Greet by the display name the user chose; fall back to the handle.
+  const handle =
+    sessionUser?.displayName?.trim() || username || sessionUser?.name?.split(' ')[0] || '';
   const avatarSeed = username || sessionUser?.email || sessionUser?.name || 'guest';
   const avatarInitial = (handle || avatarSeed).slice(0, 1).toUpperCase();
   const avatarImage = sessionUser?.image ?? null;
@@ -75,6 +80,20 @@ export function HeroSignedIn() {
   const passportHref = buildLocalizedPathname(PASSPORT_PATH, locale);
   const bookingsHref = buildLocalizedPathname(BOOKINGS_PATH, locale);
   const setupHref = buildLocalizedPathname(ACCOUNT_SETUP_PATH, locale);
+
+  // What's left before the public page is complete — same checks as the
+  // Account sidebar. Only once there's a handle; before that the
+  // "claim your handle" link below is the next step.
+  const profileTodo: Array<{ key: string; anchor: string }> = username
+    ? [
+        ...(sessionUser?.profilePublic ? [] : [{ key: 'heroSignedIn.todoPublic', anchor: 'account-visibility' }]),
+        ...(sessionUser?.image ? [] : [{ key: 'heroSignedIn.todoAvatar', anchor: 'account-avatar' }]),
+        ...(sessionUser?.displayName?.trim() || sessionUser?.bio?.trim()
+          ? []
+          : [{ key: 'heroSignedIn.todoBasic', anchor: 'account-basic' }]),
+      ]
+    : [];
+  const accountHref = buildLocalizedPathname(ACCOUNT_PATH, locale);
   const profileHref = username ? buildLocalizedPathname(`/${username}`, locale) : null;
 
   // Greeting tracks the user's local hour. Three buckets is plenty.
@@ -224,6 +243,18 @@ export function HeroSignedIn() {
       ) : null}
 
       {nextCoffee ? <NextCoffeeCard booking={nextCoffee} bookingsHref={bookingsHref} /> : null}
+
+      {profileTodo.length > 0 ? (
+        <a className={styles.actionCard} href={`${accountHref}#${profileTodo[0].anchor}`}>
+          <span className={styles.actionIcon} aria-hidden>✎</span>
+          <span className={styles.actionText}>
+            {t('heroSignedIn.finishProfile', {
+              items: profileTodo.map((i) => t(i.key)).join(t('heroSignedIn.todoJoiner')),
+            })}
+          </span>
+          <span className={styles.actionArrow} aria-hidden>→</span>
+        </a>
+      ) : null}
 
       {/* Fallback "View bookings" link — only renders when the inbox
           fetch failed (so the user has no idea whether they have
