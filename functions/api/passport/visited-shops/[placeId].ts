@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { type AuthEnv } from '../../../_lib/auth';
 import { getDb } from '../../../_lib/db';
 import { visitedShops } from '../../../_lib/db/schema';
-import { getSessionUser, jsonError } from '../../../_lib/passport';
+import { asMs, getSessionUser, jsonError, tombstoneColumns } from '../../../_lib/passport';
 
 /**
  * Soft-delete (tombstone) so an in-flight upsert from another offline device
@@ -30,12 +30,11 @@ export const onRequestDelete: PagesFunction<AuthEnv> = async ({ request, env, pa
 
   if (!prev) return new Response(null, { status: 204 });
 
-  const prevMs = prev.updatedAt instanceof Date ? prev.updatedAt.getTime() : Number(prev.updatedAt);
-  if (tsMs <= prevMs) return new Response(null, { status: 204 });
+  if (tsMs <= asMs(prev.updatedAt)) return new Response(null, { status: 204 });
 
   await db
     .update(visitedShops)
-    .set({ deleted: true, updatedAt: new Date(tsMs) })
+    .set(tombstoneColumns(prev, tsMs))
     .where(and(eq(visitedShops.userId, user.id), eq(visitedShops.placeId, placeId)));
 
   return new Response(null, { status: 204 });

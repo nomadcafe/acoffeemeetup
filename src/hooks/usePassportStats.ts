@@ -55,7 +55,9 @@ export function usePassportStats(visitedShops: VisitedShopSnapshot[], now?: numb
 
     for (const shop of visitedShops) {
       for (const ts of shop.visits) {
-        if (!Number.isFinite(ts)) continue;
+        // Future stamps (left by the old approve-time booking stamp) are
+        // meetings that haven't happened — don't count them as cups yet.
+        if (!Number.isFinite(ts) || ts > ref) continue;
         total++;
         if (ts >= todayStart) today++;
         if (ts >= weekStart) thisWeek++;

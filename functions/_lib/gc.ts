@@ -1,7 +1,8 @@
-import { and, eq, lt } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import type { AuthEnv } from './auth';
 import { getDb } from './db';
 import { apiSpend, bookingAttempts, bookings, proposals, verification } from './db/schema';
+import { stampVisit } from './passport';
 
 /**
  * Periodic cleanup. Two tables grow without bound otherwise:
@@ -21,12 +22,21 @@ import { apiSpend, bookingAttempts, bookings, proposals, verification } from './
  *      keep the count query cheap regardless of table size, but DELETE
  *      keeps storage tidy.
  *
+ *   3. Passport stamps for meetings that happened. An approved booking
+ *      stamps the host's passport only after it has ended — approving a
+ *      future meeting used to stamp immediately, which put future dates
+ *      into "today"/streak stats and left phantom visits behind when the
+ *      booking was later cancelled.
+ *
  * Returns counts so the cron endpoint can log + the Actions tab shows
  * the run as productive.
  */
 
 const UNCONFIRMED_TTL_MS = 24 * 60 * 60_000;
 const ATTEMPT_LOG_TTL_MS = 7 * 24 * 60 * 60_000;
+/* Each stamp is ~3 D1 queries; cap per run to stay well inside the
+ * per-invocation query limit. Any backlog drains on the following nights. */
+const STAMP_BATCH = 100;
 
 export async function runBookingGc(env: AuthEnv): Promise<{
   unconfirmedDeleted: number;
@@ -34,6 +44,7 @@ export async function runBookingGc(env: AuthEnv): Promise<{
   expiredProposalsDeleted: number;
   verificationDeleted: number;
   spendRowsDeleted: number;
+  passportStamped: number;
 }> {
   const db = getDb(env);
   const now = Date.now();
@@ -81,11 +92,60 @@ export async function runBookingGc(env: AuthEnv): Promise<{
     .where(lt(apiSpend.day, spendBefore))
     .returning({ day: apiSpend.day });
 
+  const passportStamped = await stampEndedMeetings(env, now);
+
   return {
+    passportStamped,
     unconfirmedDeleted: unconfirmedRes.length,
     spendRowsDeleted: spendRes.length,
     attemptLogDeleted: attemptsRes.length,
     expiredProposalsDeleted: proposalsRes.length,
     verificationDeleted: verificationRes.length,
   };
+}
+
+async function stampEndedMeetings(env: AuthEnv, now: number): Promise<number> {
+  const db = getDb(env);
+  const due = await db
+    .select()
+    .from(bookings)
+    .where(
+      and(
+        inArray(bookings.status, ['pending', 'confirmed']),
+        isNull(bookings.passportStampedAt),
+        isNotNull(bookings.placeId),
+        sql`${bookings.scheduledAt} + ${bookings.durationMinutes} * 60000 <= ${now}`,
+      ),
+    )
+    .limit(STAMP_BATCH);
+
+  let stamped = 0;
+  for (const b of due) {
+    if (!b.placeId || !b.placeName || b.placeLat == null || b.placeLng == null) continue;
+    try {
+      await stampVisit(
+        db,
+        b.organizerUserId,
+        {
+          placeId: b.placeId,
+          name: b.placeName,
+          address: b.placeAddress ?? '',
+          lat: b.placeLat,
+          lng: b.placeLng,
+        },
+        b.scheduledAt instanceof Date ? b.scheduledAt.getTime() : Number(b.scheduledAt),
+      );
+      await db
+        .update(bookings)
+        .set({ passportStampedAt: new Date(now) })
+        .where(eq(bookings.id, b.id));
+      stamped++;
+    } catch (e) {
+      console.error('[gc] passport stamp failed', {
+        bookingId: b.id,
+        err: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return stamped;
 }

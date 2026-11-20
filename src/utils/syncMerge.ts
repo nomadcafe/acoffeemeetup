@@ -1,22 +1,7 @@
 import type { StarredShopSnapshot, VisitedShopSnapshot } from '../types';
 import type { VisitedShopWire } from './passportSync';
 import type { StarredShopWire } from './starredSync';
-
-const VISIT_DEDUPE_MS = 60_000;
-
-/** Mirror of the server-side mergeVisits — union, sort newest-first, collapse near-duplicates. */
-function mergeVisits(a: number[], b: number[]): number[] {
-  const all = [...a, ...b]
-    .filter((n) => typeof n === 'number' && Number.isFinite(n))
-    .sort((x, y) => y - x);
-  const out: number[] = [];
-  for (const ts of all) {
-    if (out.length === 0 || out[out.length - 1] - ts >= VISIT_DEDUPE_MS) {
-      out.push(ts);
-    }
-  }
-  return out;
-}
+import { mergeVisitHistory } from './visitMerge';
 
 function shallowEqualNotes(
   a: Record<string, string> | undefined,
@@ -32,39 +17,6 @@ function shallowEqualNotes(
     }
   }
   return true;
-}
-
-/** Per-ts note merge mirroring the server: longer string wins. */
-function mergeVisitNotes(
-  a: Record<string, string> | undefined,
-  b: Record<string, string> | undefined,
-): Record<string, string> | undefined {
-  if (!a && !b) return undefined;
-  const out: Record<string, string> = { ...(a ?? {}) };
-  for (const [ts, note] of Object.entries(b ?? {})) {
-    if (!note) continue;
-    const cur = out[ts];
-    if (!cur || note.length > cur.length) out[ts] = note;
-  }
-  return Object.keys(out).length > 0 ? out : undefined;
-}
-
-/** Per-ts rating merge: any remote rating fills a missing local one; if both
- *  exist, prefer the higher value (rating-up wins, since "loved this" is a
- *  more committed action than "tapped a star and changed my mind"). */
-function mergeVisitRatings(
-  a: Record<string, number> | undefined,
-  b: Record<string, number> | undefined,
-): Record<string, number> | undefined {
-  if (!a && !b) return undefined;
-  const out: Record<string, number> = { ...(a ?? {}) };
-  for (const [ts, r] of Object.entries(b ?? {})) {
-    const v = Number(r);
-    if (!Number.isFinite(v) || v <= 0) continue;
-    const cur = out[ts];
-    if (cur === undefined || v > cur) out[ts] = v;
-  }
-  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function shallowEqualRatings(
@@ -83,11 +35,22 @@ function shallowEqualRatings(
   return true;
 }
 
+function emptyToUndefined<T>(m: Record<string, T>): Record<string, T> | undefined {
+  return Object.keys(m).length > 0 ? m : undefined;
+}
+
+function sameNumbers(a: readonly number[] | undefined, b: readonly number[] | undefined): boolean {
+  const x = a ?? [];
+  const y = b ?? [];
+  return x.length === y.length && x.every((v, i) => v === y[i]);
+}
+
 /**
- * Merge a delta of remote visited rows into the local list. LWW per-row by
- * `updatedAt`; tombstones (deleted=true) on the winning side remove the row;
- * `visits` are append-only union regardless of LWW so visit history never
- * vanishes when one side happens to be older.
+ * Merge a delta of remote visited rows into the local list. Same rules as
+ * the server (src/utils/visitMerge.ts): LWW per-row by `updatedAt` for
+ * display fields + notes/ratings; visit history is visits minus removed,
+ * unioned across both sides; tombstones (deleted=true) on the winning side
+ * remove the row.
  */
 export function mergeRemoteVisited(
   local: VisitedShopSnapshot[],
@@ -97,7 +60,7 @@ export function mergeRemoteVisited(
   for (const r of remote) {
     const cur = byId.get(r.id);
     if (!cur) {
-      if (r.deleted) continue;
+      if (r.deleted || r.visits.length === 0) continue;
       byId.set(r.id, {
         id: r.id,
         name: r.name,
@@ -106,6 +69,7 @@ export function mergeRemoteVisited(
         lng: r.lng,
         googleMapsUri: r.googleMapsUri,
         visits: r.visits,
+        removedVisits: r.removedVisits,
         visitNotes: r.visitNotes,
         visitRatings: r.visitRatings,
         city: undefined,
@@ -113,14 +77,23 @@ export function mergeRemoteVisited(
       });
       continue;
     }
-    const visits = mergeVisits(cur.visits, r.visits);
-    const visitNotes = mergeVisitNotes(cur.visitNotes, r.visitNotes);
-    const visitRatings = mergeVisitRatings(cur.visitRatings, r.visitRatings);
-    if (r.updatedAt > cur.updatedAt) {
-      if (r.deleted) {
-        byId.delete(r.id);
-        continue;
-      }
+    const remoteWins = r.updatedAt > cur.updatedAt;
+    if (remoteWins && r.deleted) {
+      byId.delete(r.id);
+      continue;
+    }
+    const h = remoteWins ? mergeVisitHistory(r, cur) : mergeVisitHistory(cur, r);
+    if (h.visits.length === 0) {
+      byId.delete(r.id);
+      continue;
+    }
+    const merged = {
+      visits: h.visits,
+      removedVisits: h.removedVisits.length > 0 ? h.removedVisits : undefined,
+      visitNotes: emptyToUndefined(h.visitNotes),
+      visitRatings: emptyToUndefined(h.visitRatings),
+    };
+    if (remoteWins) {
       byId.set(r.id, {
         id: r.id,
         name: r.name,
@@ -128,20 +101,18 @@ export function mergeRemoteVisited(
         lat: r.lat,
         lng: r.lng,
         googleMapsUri: r.googleMapsUri,
-        visits,
-        visitNotes,
-        visitRatings,
+        ...merged,
         city: cur.city,
         updatedAt: r.updatedAt,
       });
-    } else {
-      // Local is newer (or tied) — keep local fields, but adopt any unioned visits / notes / ratings.
-      const visitsChanged = visits.length !== cur.visits.length;
-      const notesChanged = !shallowEqualNotes(cur.visitNotes, visitNotes);
-      const ratingsChanged = !shallowEqualRatings(cur.visitRatings, visitRatings);
-      if (visitsChanged || notesChanged || ratingsChanged) {
-        byId.set(r.id, { ...cur, visits, visitNotes, visitRatings });
-      }
+    } else if (
+      !sameNumbers(cur.visits, merged.visits) ||
+      !sameNumbers(cur.removedVisits, merged.removedVisits) ||
+      !shallowEqualNotes(cur.visitNotes, merged.visitNotes) ||
+      !shallowEqualRatings(cur.visitRatings, merged.visitRatings)
+    ) {
+      // Local is newer (or tied) — keep local fields, adopt merged history.
+      byId.set(r.id, { ...cur, ...merged });
     }
   }
   return Array.from(byId.values());

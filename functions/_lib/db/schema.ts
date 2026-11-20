@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real, index, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
 // Better Auth tables. Field shapes follow Better Auth's expected schema as of v1.6.x.
 // We add `username` to `user` for the /yourname Phase 2 surface.
@@ -135,7 +136,17 @@ export const visitedShops = sqliteTable(
        can exist without a note. Kept in its own column so legacy readers
        and old client builds keep working without surprises. */
     visitRatings: text('visit_ratings').notNull().default('{}'),
+    /* JSON array of visit timestamps the user removed. Grow-only tombstone
+       set: a ts listed here stays dead even if a stale device re-sends it.
+       See src/utils/visitMerge.ts. */
+    removedVisits: text('removed_visits').notNull().default('[]'),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+    /* Server clock at the last write. Delta-pull cursor — `updatedAt` is the
+       client's clock (LWW key) and can't be trusted to be monotonic across
+       devices, so `?since=` filters on this instead. */
+    serverUpdatedAt: integer('server_updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .default(sql`0`),
     /* Tombstone for offline delete. We keep the row so a stale upsert from
        another device with an older updatedAt loses LWW and doesn't resurrect. */
     deleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
@@ -143,6 +154,7 @@ export const visitedShops = sqliteTable(
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.placeId] }),
     userIdx: index('visited_shops_user_idx').on(t.userId),
+    userSyncIdx: index('visited_shops_user_sync_idx').on(t.userId, t.serverUpdatedAt),
   }),
 );
 
@@ -229,6 +241,11 @@ export const bookings = sqliteTable(
      *  has context before showing up. Capped client + server side. */
     visitorMessage: text('visitor_message'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    /** When the nightly GC stamped the host's passport for this meeting.
+     *  Stamping waits until the meeting has ended — an approved-but-future
+     *  booking may still be cancelled or moved, and a future timestamp
+     *  would skew passport stats ("today", streaks, last visit). */
+    passportStampedAt: integer('passport_stamped_at', { mode: 'timestamp_ms' }),
   },
   (t) => ({
     organizerSlotIdx: index('bookings_org_slot_idx').on(t.organizerUserId, t.scheduledAt),

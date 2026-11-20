@@ -54,6 +54,15 @@ interface BookingWire {
   createdAt: number;
 }
 
+/** Rows that no longer hold a slot: host declined the request, or either
+ *  side cancelled. They never belong under "Upcoming" or take actions. */
+function isInactive(r: Pick<BookingWire, 'status'>): boolean {
+  return r.status === 'cancelled' || r.status === 'rejected';
+}
+
+const endOfMeeting = (r: { scheduledAt: number; durationMinutes: number }) =>
+  r.scheduledAt + r.durationMinutes * 60_000;
+
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'ready'; bookings: BookingWire[] }
@@ -685,8 +694,15 @@ function PendingRequestsSection({
   t,
 }: PendingRequestsProps) {
   if (rows.length === 0) return null;
-  // Soonest first so the most-time-sensitive request bubbles up.
-  const sorted = [...rows].sort((a, b) => a.scheduledAt - b.scheduledAt);
+  // Soonest first so the most-time-sensitive request bubbles up; requests
+  // whose time already passed sink below the live ones.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
+  const sorted = [...rows].sort((a, b) => {
+    const ea = a.scheduledAt <= now ? 1 : 0;
+    const eb = b.scheduledAt <= now ? 1 : 0;
+    return ea - eb || a.scheduledAt - b.scheduledAt;
+  });
   return (
     <section className={accountStyles.card} aria-label={t('bookings.pendingTitle')}>
       <h2 className={styles.sectionTitle}>
@@ -727,6 +743,8 @@ function PendingRequestRow({
   timezone,
   t,
 }: PendingRowProps) {
+  // eslint-disable-next-line react-hooks/purity
+  const expired = row.scheduledAt <= Date.now();
   const start = new Date(row.scheduledAt);
   const dateLine = new Intl.DateTimeFormat(locale, {
     weekday: 'long',
@@ -741,9 +759,15 @@ function PendingRequestRow({
       <div>
         <p className={styles.when}>
           {dateLine}
-          <span className={`${styles.statusPill} ${styles.statusPillPending}`}>
-            {t('bookings.statusPendingApproval')}
-          </span>
+          {expired ? (
+            <span className={`${styles.statusPill} ${styles.statusPillPast}`}>
+              {t('bookings.statusExpired')}
+            </span>
+          ) : (
+            <span className={`${styles.statusPill} ${styles.statusPillPending}`}>
+              {t('bookings.statusPendingApproval')}
+            </span>
+          )}
         </p>
         <div className={styles.body}>
           <span>
@@ -771,7 +795,7 @@ function PendingRequestRow({
           className={styles.approveButton}
           onClick={onApprove}
         >
-          {t('bookings.approveCta')}
+          {t(expired ? 'bookings.expiredCta' : 'bookings.approveCta')}
         </button>
         <button
           type="button"
@@ -875,10 +899,11 @@ function ApproveRequestModal({
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<PickedCafe | null>(null);
 
-  /* Passport-derived quick picks. Auto-stamping on approve means the
-   * host's visited_shops list grows organically with every coffee they
-   * actually had — so by their second or third booking, "your usual
-   * spots" is full of real signal instead of empty. We rank by visit
+  /* Passport-derived quick picks. The nightly GC stamps the host's
+   * passport after each booked coffee ends, so visited_shops grows
+   * organically with every meetup that actually happened — by their
+   * second or third booking, "your usual spots" is full of real signal
+   * instead of empty. We rank by visit
    * count desc and filter out cafes already in featuredCafes so the
    * row doesn't duplicate the curated list above. */
   const { visitedShops } = useApp();
@@ -895,7 +920,10 @@ function ApproveRequestModal({
 
   // Time-editor state. `editingTime` toggles the section open/closed;
   // `proposedTimeMs` holds the host's edit (null = same as request).
-  const [editingTime, setEditingTime] = useState(false);
+  // An expired request can only be approved with a new time (the server
+  // refuses the original), so open the time editor up front.
+  const [expired] = useState(() => target.scheduledAt <= Date.now());
+  const [editingTime, setEditingTime] = useState(expired);
   const [proposedTimeMs, setProposedTimeMs] = useState<number | null>(null);
   const effectiveTimeMs = proposedTimeMs ?? target.scheduledAt;
 
@@ -1180,18 +1208,22 @@ function ApproveRequestModal({
                   disabled={busy}
                 />
               </label>
-              <p className={styles.timeEditHint}>{t('bookings.proposeNewTimeHint')}</p>
-              <button
-                type="button"
-                className={styles.timeEditClear}
-                onClick={() => {
-                  setEditingTime(false);
-                  setProposedTimeMs(null);
-                }}
-                disabled={busy}
-              >
-                {t('bookings.proposeNewTimeReset')}
-              </button>
+              <p className={styles.timeEditHint}>
+                {t(expired ? 'bookings.expiredModalHint' : 'bookings.proposeNewTimeHint')}
+              </p>
+              {expired ? null : (
+                <button
+                  type="button"
+                  className={styles.timeEditClear}
+                  onClick={() => {
+                    setEditingTime(false);
+                    setProposedTimeMs(null);
+                  }}
+                  disabled={busy}
+                >
+                  {t('bookings.proposeNewTimeReset')}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1229,7 +1261,7 @@ function ApproveRequestModal({
                 ...(proposedTimeMs != null ? { scheduledAt: proposedTimeMs } : {}),
               });
             }}
-            disabled={busy || !picked}
+            disabled={busy || !picked || (expired && proposedTimeMs == null)}
           >
             {busy ? t('bookings.approving') : t('bookings.approveModalConfirm')}
           </button>
@@ -1644,7 +1676,7 @@ function WeekGridView({
                 )}
               </div>
               {list.map((row) => {
-                const isCancelled = row.status === 'cancelled';
+                const isCancelled = isInactive(row);
                 const blockCls = `${styles.dayBlock} ${isCancelled ? styles.dayBlockCancelled : ''}`;
                 const time = new Intl.DateTimeFormat(locale, {
                   hour: 'numeric',
@@ -1734,13 +1766,9 @@ function BookingsList({
    * to Past the moment the clock crosses the start time. Without this,
    * a host reading their phone at the cafe sees their own meeting in
    * the Past list while still sitting at the table. */
-  const endOfMeeting = (r: { scheduledAt: number; durationMinutes: number }) =>
-    r.scheduledAt + r.durationMinutes * 60_000;
-  const upcoming = rows.filter(
-    (r) => r.status !== 'cancelled' && endOfMeeting(r) > now,
-  );
+  const upcoming = rows.filter((r) => !isInactive(r) && endOfMeeting(r) > now);
   const archived = rows
-    .filter((r) => r.status === 'cancelled' || endOfMeeting(r) <= now)
+    .filter((r) => isInactive(r) || endOfMeeting(r) <= now)
     // Past + cancelled: most recent first.
     .sort((a, b) => b.scheduledAt - a.scheduledAt);
 
@@ -1818,9 +1846,11 @@ function BookingRow({
   // Same trade-off as BookingsList — past/future status is recomputed each
   // render; tab left open across a slot start gets the styling on the next
   // refresh.
+  // Past = the meeting has ENDED, matching BookingsList's Upcoming cut —
+  // a meeting in progress shouldn't wear a "Past" pill.
   // eslint-disable-next-line react-hooks/purity
-  const isPast = row.scheduledAt <= Date.now();
-  const isCancelled = row.status === 'cancelled';
+  const isPast = endOfMeeting(row) <= Date.now();
+  const isCancelled = isInactive(row);
   const cls = [styles.row, isCancelled && styles.rowCancelled, !isCancelled && isPast && styles.rowPast]
     .filter(Boolean)
     .join(' ');
@@ -1876,7 +1906,9 @@ function BookingRow({
         <p className={styles.when}>
           {dateLine}
           {isCancelled ? (
-            <span className={styles.statusPill}>{t('bookings.statusCancelled')}</span>
+            <span className={styles.statusPill}>
+              {t(row.status === 'rejected' ? 'bookings.statusRejected' : 'bookings.statusCancelled')}
+            </span>
           ) : isPast ? (
             // Neutral pill for past-not-cancelled rows so the user can
             // tell at a glance which rows already happened — without it
@@ -1895,26 +1927,28 @@ function BookingRow({
               {row.visitorEmail}
             </a>
           </span>
-          <span>
-            {mapsHref ? (
-              <a className={styles.cafeLink} href={mapsHref} target="_blank" rel="noreferrer">
-                {row.placeName} →
-              </a>
-            ) : (
-              <strong>{row.placeName}</strong>
-            )}
-            <span className={styles.placeAddress}>{row.placeAddress}</span>
-            {directionsHref ? (
-              <a
-                className={styles.directionsInline}
-                href={directionsHref}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {t('bookings.getDirections')} →
-              </a>
-            ) : null}
-          </span>
+          {row.placeName ? (
+            <span>
+              {mapsHref ? (
+                <a className={styles.cafeLink} href={mapsHref} target="_blank" rel="noreferrer">
+                  {row.placeName} →
+                </a>
+              ) : (
+                <strong>{row.placeName}</strong>
+              )}
+              <span className={styles.placeAddress}>{row.placeAddress}</span>
+              {directionsHref ? (
+                <a
+                  className={styles.directionsInline}
+                  href={directionsHref}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {t('bookings.getDirections')} →
+                </a>
+              ) : null}
+            </span>
+          ) : null}
           {row.visitorMessage ? (
             <span className={styles.visitorMessage}>
               <span className={styles.visitorMessageLabel}>{t('bookings.theirNote')}</span>

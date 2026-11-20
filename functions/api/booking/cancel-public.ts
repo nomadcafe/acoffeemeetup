@@ -6,6 +6,7 @@ import { getDb } from '../../_lib/db';
 import { bookings, user } from '../../_lib/db/schema';
 import { jsonError, jsonErrorCoded } from '../../_lib/jsonError';
 import { verifyCancelToken } from '../../_lib/cancelToken';
+import { unstampCancelledBooking } from '../../_lib/passport';
 import {
   formatTimePair,
   renderOrganizerCancellationHtml,
@@ -108,6 +109,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
   // the first place. Just flip status, return ok.
   const wasUnconfirmed = row.status === 'unconfirmed';
   await db.update(bookings).set({ status: 'cancelled' }).where(eq(bookings.id, input.id));
+  await unstampCancelledBooking(db, row);
 
   // Notify organizer when there's still time on the calendar — past
   // bookings get the silent treatment same as the organizer-side cancel.

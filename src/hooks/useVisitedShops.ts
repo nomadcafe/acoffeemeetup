@@ -42,6 +42,11 @@ function normalizeStored(raw: unknown): VisitedShopSnapshot[] {
         }
         if (Object.keys(cleaned).length > 0) visitRatings = cleaned;
       }
+      const removedVisits = Array.isArray(s.removedVisits)
+        ? (s.removedVisits as unknown[]).filter(
+            (n): n is number => typeof n === 'number' && Number.isFinite(n),
+          )
+        : undefined;
       return {
         id: s.id,
         name: s.name || 'Visited café',
@@ -50,6 +55,7 @@ function normalizeStored(raw: unknown): VisitedShopSnapshot[] {
         lng: typeof s.lng === 'number' ? s.lng : 0,
         googleMapsUri: typeof s.googleMapsUri === 'string' ? s.googleMapsUri : undefined,
         visits: [...visits].sort((a, b) => b - a),
+        removedVisits: removedVisits && removedVisits.length > 0 ? removedVisits : undefined,
         visitNotes,
         visitRatings,
         city: storedCity ?? extractCity(address) ?? undefined,
@@ -175,13 +181,22 @@ export function useVisitedShops(): {
         }
         const filtered = s.visits.filter((t) => t !== ts);
         if (filtered.length === 0) continue; // shop dropped from list entirely
-        let nextNotes = s.visitNotes;
-        if (nextNotes && nextNotes[String(ts)]) {
+        const key = String(ts);
+        const dropKey = <T,>(m: Record<string, T> | undefined) => {
+          if (!m || m[key] === undefined) return m;
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { [String(ts)]: _dropped, ...rest } = nextNotes;
-          nextNotes = Object.keys(rest).length > 0 ? rest : undefined;
-        }
-        next.push({ ...s, visits: filtered, visitNotes: nextNotes, updatedAt: Date.now() });
+          const { [key]: _dropped, ...rest } = m;
+          return Object.keys(rest).length > 0 ? rest : undefined;
+        };
+        next.push({
+          ...s,
+          visits: filtered,
+          // Tombstone the ts so sync can't resurrect it from another copy.
+          removedVisits: [ts, ...(s.removedVisits ?? []).filter((t) => t !== ts)],
+          visitNotes: dropKey(s.visitNotes),
+          visitRatings: dropKey(s.visitRatings),
+          updatedAt: Date.now(),
+        });
       }
       return next;
     });

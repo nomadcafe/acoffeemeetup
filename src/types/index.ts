@@ -57,6 +57,9 @@ export interface VisitedShopSnapshot {
   googleMapsUri?: string;
   /** Ordered newest-first list of visit timestamps (ms). A passport-style stamp log. */
   visits: number[];
+  /** Visit timestamps the user deleted — grow-only tombstones so another
+   *  device's stale copy can't bring them back on sync. */
+  removedVisits?: number[];
   /** Per-visit short notes keyed by ts. Sparse — only visits that have a note appear. */
   visitNotes?: Record<string, string>;
   /** Per-visit 1–5 star ratings keyed by ts. Sparse — unrated visits are absent.

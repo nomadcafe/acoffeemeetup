@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 import type { AuthEnv } from '../../../_lib/auth';
 import { getDb } from '../../../_lib/db';
 import { bookings, user } from '../../../_lib/db/schema';
-import { getSessionContext, jsonError } from '../../../_lib/passport';
+import { getSessionContext, jsonError, unstampCancelledBooking } from '../../../_lib/passport';
 import {
   formatTimePair,
   renderVisitorCancellationHtml,
@@ -46,6 +46,7 @@ export const onRequestDelete: PagesFunction<AuthEnv> = async ({ request, env, pa
   }
 
   await db.update(bookings).set({ status: 'cancelled' }).where(eq(bookings.id, id));
+  await unstampCancelledBooking(db, row);
 
   const startMs =
     row.scheduledAt instanceof Date ? row.scheduledAt.getTime() : Number(row.scheduledAt);

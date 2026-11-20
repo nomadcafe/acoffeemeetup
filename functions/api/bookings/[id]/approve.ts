@@ -3,8 +3,8 @@ import { and, eq, gte, inArray, lte, ne } from 'drizzle-orm';
 import { Resend } from 'resend';
 import type { AuthEnv } from '../../../_lib/auth';
 import { getDb } from '../../../_lib/db';
-import { bookings, user, visitedShops } from '../../../_lib/db/schema';
-import { getSessionContext, jsonError, mergeVisits } from '../../../_lib/passport';
+import { bookings, user } from '../../../_lib/db/schema';
+import { getSessionContext, jsonError } from '../../../_lib/passport';
 import {
   hasCollision,
   isSlotInAvailability,
@@ -126,8 +126,16 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, para
     row.scheduledAt instanceof Date ? row.scheduledAt.getTime() : Number(row.scheduledAt);
   let finalMs = originalMs;
 
+  // A request whose slot already passed can't be approved as-is — the
+  // visitor would get a "see you then" email for a time that's gone. The
+  // host can still approve it by proposing a new time (validated below).
+  const timeChanged = input.scheduledAt != null && input.scheduledAt !== originalMs;
+  if (!timeChanged && originalMs <= Date.now()) {
+    return jsonError('This request has expired — propose a new time to approve it.', 409);
+  }
+
   // ----- Time-change validation (only when host actually changed it) -----
-  if (input.scheduledAt && input.scheduledAt !== originalMs) {
+  if (timeChanged && input.scheduledAt != null) {
     if (input.scheduledAt <= Date.now() + 60 * 60_000) {
       return jsonError('Slot must be at least 1 hour in the future', 400);
     }
@@ -186,83 +194,9 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, para
     })
     .where(eq(bookings.id, id));
 
-  /* Stamp the host's passport with the cafe they just approved.
-   * Visit timestamp = the meeting's scheduledAt (not approve time) so
-   * the stamp shows up in the right calendar slot. The passport was
-   * previously a manual-entry feature isolated from the booking flow;
-   * tying it to actual coffee meetups makes it grow organically and
-   * gives the AI agent a real signal for "cafes this user already knows".
-   *
-   * Wrapped in try/catch so a stamp failure (rare — duplicate dedup,
-   * etc.) can't roll back the approve. The booking itself is the
-   * source of truth; the passport is decorative + future personalization. */
-  try {
-    const [existing] = await db
-      .select()
-      .from(visitedShops)
-      .where(
-        and(
-          eq(visitedShops.userId, ctx.user.id),
-          eq(visitedShops.placeId, input.placeId),
-        ),
-      );
-    if (existing) {
-      /* Lightweight visits-array parse — the canonical implementation
-       * in passport.ts is private; replicating the 4-line JSON.parse
-       * here is cheaper than exporting it just for this one call site. */
-      let prevVisits: number[] = [];
-      try {
-        const parsed: unknown = JSON.parse(existing.visits);
-        if (Array.isArray(parsed)) {
-          prevVisits = parsed.filter(
-            (n): n is number => typeof n === 'number' && Number.isFinite(n),
-          );
-        }
-      } catch {
-        /* malformed JSON → start fresh */
-      }
-      const merged = mergeVisits(prevVisits, [finalMs]);
-      await db
-        .update(visitedShops)
-        .set({
-          name: input.placeName,
-          address: input.placeAddress,
-          lat: input.placeLat,
-          lng: input.placeLng,
-          visits: JSON.stringify(merged),
-          updatedAt: now,
-          deleted: false,
-        })
-        .where(
-          and(
-            eq(visitedShops.userId, ctx.user.id),
-            eq(visitedShops.placeId, input.placeId),
-          ),
-        );
-    } else {
-      await db.insert(visitedShops).values({
-        userId: ctx.user.id,
-        placeId: input.placeId,
-        name: input.placeName,
-        address: input.placeAddress,
-        lat: input.placeLat,
-        lng: input.placeLng,
-        googleMapsUri: input.googleMapsUri ?? null,
-        city: null,
-        visits: JSON.stringify([finalMs]),
-        visitNotes: '{}',
-        visitRatings: '{}',
-        updatedAt: now,
-        deleted: false,
-      });
-    }
-  } catch (e) {
-    console.error('[passport] stamp on approve failed', {
-      bookingId: id,
-      placeId: input.placeId,
-      err: e instanceof Error ? e.message : String(e),
-    });
-  }
+  /* No passport stamp here: the meeting hasn't happened yet and may still
+   * be cancelled or moved. The nightly GC (`_lib/gc.ts`) stamps the host's
+   * passport once the meeting has ended. */
 
   // Email visitor: "X said yes! Meet at Y" with the café details
   // (and the new time, if changed).

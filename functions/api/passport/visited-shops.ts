@@ -4,6 +4,7 @@ import { getDb } from '../../_lib/db';
 import { visitedShops } from '../../_lib/db/schema';
 import {
   VisitedShopWireSchema,
+  buildVisitedWrite,
   getSessionUser,
   jsonError,
   mergeVisitedRow,
@@ -29,41 +30,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
     .where(and(eq(visitedShops.userId, user.id), eq(visitedShops.placeId, shop.id)));
 
   const merged = mergeVisitedRow(prev, shop);
-
-  if (prev) {
-    await db
-      .update(visitedShops)
-      .set({
-        name: merged.name,
-        address: merged.address,
-        lat: merged.lat,
-        lng: merged.lng,
-        googleMapsUri: merged.googleMapsUri,
-        city: merged.city,
-        visits: JSON.stringify(merged.visits),
-        visitNotes: JSON.stringify(merged.visitNotes),
-        visitRatings: JSON.stringify(merged.visitRatings ?? {}),
-        updatedAt: merged.updatedAt,
-        deleted: merged.deleted,
-      })
-      .where(and(eq(visitedShops.userId, user.id), eq(visitedShops.placeId, shop.id)));
-  } else {
-    await db.insert(visitedShops).values({
-      userId: user.id,
-      placeId: shop.id,
-      name: merged.name,
-      address: merged.address,
-      lat: merged.lat,
-      lng: merged.lng,
-      googleMapsUri: merged.googleMapsUri,
-      city: merged.city,
-      visits: JSON.stringify(merged.visits),
-      visitNotes: JSON.stringify(merged.visitNotes),
-      visitRatings: JSON.stringify(merged.visitRatings ?? {}),
-      updatedAt: merged.updatedAt,
-      deleted: merged.deleted,
-    });
-  }
+  await buildVisitedWrite(db, user.id, shop.id, !!prev, merged);
 
   const [updated] = await db
     .select()

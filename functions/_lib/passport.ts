@@ -1,11 +1,21 @@
 import { z } from 'zod';
+import { and, eq } from 'drizzle-orm';
 import { createAuth, type AuthEnv } from './auth';
-import { visitedShops } from './db/schema';
+import type { getDb } from './db';
+import { bookings, visitedShops } from './db/schema';
+import {
+  MAX_REMOVED_VISITS,
+  mergeRemoved,
+  mergeVisitHistory,
+  mergeVisits,
+} from '../../src/utils/visitMerge';
+
+export { mergeVisits };
 
 // Wire format mirrors `VisitedShopSnapshot` in src/types/index.ts.
 // DB stores visits as JSON; the client always sees number[].
-// `updatedAt` is the LWW key for non-visit fields; `visits` itself is always
-// merged (append-only union) regardless of which side is newer.
+// `updatedAt` is the LWW key for non-visit fields. Visit history merges as a
+// two-phase set (visits minus removedVisits) — see src/utils/visitMerge.ts.
 export const VisitedShopWireSchema = z.object({
   id: z.string().min(1).max(256),
   name: z.string().min(1).max(512),
@@ -15,6 +25,8 @@ export const VisitedShopWireSchema = z.object({
   googleMapsUri: z.string().url().max(1024).optional(),
   city: z.string().max(128).optional(),
   visits: z.array(z.number().int().nonnegative()).max(2000),
+  /* Visit timestamps the user deleted. Grow-only; older clients omit it. */
+  removedVisits: z.array(z.number().int().nonnegative()).max(MAX_REMOVED_VISITS).optional(),
   /* Map of `{ visitTs: noteText }` — only for visits that have a note. Each
    * note capped to 500 chars; the whole map at 200 keys to bound payload. */
   visitNotes: z.record(z.string(), z.string().max(500)).optional(),
@@ -26,10 +38,12 @@ export const VisitedShopWireSchema = z.object({
 export type VisitedShopWire = z.infer<typeof VisitedShopWireSchema>;
 
 export type VisitedShopRow = typeof visitedShops.$inferSelect;
+type Db = ReturnType<typeof getDb>;
 
 export function rowToWire(row: VisitedShopRow): VisitedShopWire {
   const notes = parseNotes(row.visitNotes);
   const ratings = parseRatings(row.visitRatings);
+  const removed = parseVisits(row.removedVisits);
   return {
     id: row.placeId,
     name: row.name,
@@ -39,14 +53,16 @@ export function rowToWire(row: VisitedShopRow): VisitedShopWire {
     googleMapsUri: row.googleMapsUri ?? undefined,
     city: row.city ?? undefined,
     visits: parseVisits(row.visits),
+    removedVisits: removed.length > 0 ? removed : undefined,
     visitNotes: Object.keys(notes).length > 0 ? notes : undefined,
     visitRatings: Object.keys(ratings).length > 0 ? ratings : undefined,
-    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.getTime() : (row.updatedAt as unknown as number),
+    updatedAt: asMs(row.updatedAt),
     deleted: row.deleted || undefined,
   };
 }
 
-function parseVisits(raw: string): number[] {
+function parseVisits(raw: string | null | undefined): number[] {
+  if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -85,39 +101,56 @@ function parseRatings(raw: string): Record<string, number> {
   }
 }
 
-// Union two visit arrays, sort newest-first, collapse consecutive timestamps
-// within 60s of an earlier-kept one (treat as accidental double-tap).
-const DEDUPE_WINDOW_MS = 60_000;
-export function mergeVisits(a: number[], b: number[]): number[] {
-  const all = [...a, ...b]
-    .filter((n) => typeof n === 'number' && Number.isFinite(n))
-    .sort((x, y) => y - x);
-  const out: number[] = [];
-  for (const ts of all) {
-    if (out.length === 0 || out[out.length - 1] - ts >= DEDUPE_WINDOW_MS) {
-      out.push(ts);
-    }
-  }
-  return out;
-}
-
-function asMs(v: unknown): number {
+export function asMs(v: unknown): number {
   if (v instanceof Date) return v.getTime();
   if (typeof v === 'number') return v;
   return 0;
 }
 
+/** Column values for an insert/update of one visited_shops row. */
+export interface MergedVisitedRow {
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  googleMapsUri: string | null;
+  city: string | null;
+  visits: number[];
+  removedVisits: number[];
+  visitNotes: Record<string, string>;
+  visitRatings: Record<string, number>;
+  updatedAt: Date;
+  deleted: boolean;
+}
+
+function rowSide(row: VisitedShopRow) {
+  return {
+    visits: parseVisits(row.visits),
+    removedVisits: parseVisits(row.removedVisits),
+    visitNotes: parseNotes(row.visitNotes),
+    visitRatings: parseRatings(row.visitRatings),
+  };
+}
+
 /**
- * LWW row merge for visited_shops. `visits` always unions (append-only history);
- * other fields take the side with the newer `updatedAt`. If incoming is older,
- * we still merge in its visits so an offline-queued upsert never silently loses
- * the visit timestamp the user recorded — the row's display state stays prev's.
+ * LWW row merge for visited_shops. Display fields + notes/ratings take the
+ * side with the newer `updatedAt` (ties keep the stored row); visit history
+ * merges as visits ∪ visits minus removed ∪ removed, so an offline-queued
+ * upsert never loses a visit the user recorded, and a deleted visit stays
+ * deleted.
  */
-export function mergeVisitedRow(prev: VisitedShopRow | undefined, incoming: VisitedShopWire) {
-  const incomingDeleted = incoming.deleted ?? false;
-  const incomingNotes = incoming.visitNotes ?? {};
-  const incomingRatings = incoming.visitRatings ?? {};
+export function mergeVisitedRow(
+  prev: VisitedShopRow | undefined,
+  incoming: VisitedShopWire,
+): MergedVisitedRow {
+  const incomingSide = {
+    visits: incoming.visits,
+    removedVisits: incoming.removedVisits ?? [],
+    visitNotes: incoming.visitNotes ?? {},
+    visitRatings: incoming.visitRatings ?? {},
+  };
   if (!prev) {
+    const h = mergeVisitHistory(incomingSide, { visits: [] });
     return {
       name: incoming.name,
       address: incoming.address,
@@ -125,19 +158,18 @@ export function mergeVisitedRow(prev: VisitedShopRow | undefined, incoming: Visi
       lng: incoming.lng,
       googleMapsUri: incoming.googleMapsUri ?? null,
       city: incoming.city ?? null,
-      visits: incoming.visits,
-      visitNotes: incomingNotes,
-      visitRatings: incomingRatings,
+      ...h,
       updatedAt: new Date(incoming.updatedAt),
-      deleted: incomingDeleted,
+      deleted: incoming.deleted ?? false,
     };
   }
   const prevTs = asMs(prev.updatedAt);
-  const prevVisits = parseVisits(prev.visits);
-  const visits = mergeVisits(incoming.visits, prevVisits);
-  const visitNotes = mergeNotes(parseNotes(prev.visitNotes), incomingNotes);
-  const visitRatings = mergeRatings(parseRatings(prev.visitRatings), incomingRatings);
-  if (incoming.updatedAt > prevTs) {
+  const incomingWins = incoming.updatedAt > prevTs;
+  const prevSide = rowSide(prev);
+  const h = incomingWins
+    ? mergeVisitHistory(incomingSide, prevSide)
+    : mergeVisitHistory(prevSide, incomingSide);
+  if (incomingWins) {
     return {
       name: incoming.name || prev.name,
       address: incoming.address || prev.address,
@@ -145,11 +177,9 @@ export function mergeVisitedRow(prev: VisitedShopRow | undefined, incoming: Visi
       lng: incoming.lng,
       googleMapsUri: incoming.googleMapsUri ?? prev.googleMapsUri,
       city: incoming.city ?? prev.city,
-      visits,
-      visitNotes,
-      visitRatings,
+      ...h,
       updatedAt: new Date(incoming.updatedAt),
-      deleted: incomingDeleted,
+      deleted: incoming.deleted ?? false,
     };
   }
   return {
@@ -159,50 +189,143 @@ export function mergeVisitedRow(prev: VisitedShopRow | undefined, incoming: Visi
     lng: prev.lng,
     googleMapsUri: prev.googleMapsUri,
     city: prev.city,
-    visits,
-    visitNotes,
-    visitRatings,
+    ...h,
     updatedAt: new Date(prevTs),
     deleted: prev.deleted,
   };
 }
 
 /**
- * Per-ts note merge. When both sides have a note for the same visit
- * timestamp, prefer the longer text — gives the user-as-editor benefit of
- * the doubt that the longer version is the more recent / more deliberate
- * edit. Empty / missing notes never overwrite a non-empty one.
+ * Build the insert/update for a merged row (unexecuted, so callers can
+ * `db.batch()` many of them). Always bumps `serverUpdatedAt` — the
+ * delta-pull cursor — even when the incoming side lost LWW: its visits may
+ * still have changed the row, and other devices must see that.
  */
-function mergeNotes(
-  a: Record<string, string>,
-  b: Record<string, string>,
-): Record<string, string> {
-  const out: Record<string, string> = { ...a };
-  for (const [ts, note] of Object.entries(b)) {
-    if (!note) continue;
-    const cur = out[ts];
-    if (!cur || note.length > cur.length) out[ts] = note;
-  }
-  return out;
+export function buildVisitedWrite(
+  db: Db,
+  userId: string,
+  placeId: string,
+  exists: boolean,
+  merged: MergedVisitedRow,
+) {
+  const cols = {
+    name: merged.name,
+    address: merged.address,
+    lat: merged.lat,
+    lng: merged.lng,
+    googleMapsUri: merged.googleMapsUri,
+    city: merged.city,
+    visits: JSON.stringify(merged.visits),
+    removedVisits: JSON.stringify(merged.removedVisits),
+    visitNotes: JSON.stringify(merged.visitNotes),
+    visitRatings: JSON.stringify(merged.visitRatings),
+    updatedAt: merged.updatedAt,
+    serverUpdatedAt: new Date(),
+    deleted: merged.deleted,
+  };
+  return exists
+    ? db
+        .update(visitedShops)
+        .set(cols)
+        .where(and(eq(visitedShops.userId, userId), eq(visitedShops.placeId, placeId)))
+    : db.insert(visitedShops).values({ userId, placeId, ...cols });
 }
 
 /**
- * Per-ts rating merge mirroring the client. Higher rating wins on conflict —
- * "I rated this 4 stars" is a more committed action than "I changed my mind
- * down to 3", so on a desync we lean toward the more enthusiastic record.
+ * Tombstone a whole shop row. Every visit it held moves into removedVisits,
+ * so a stale device re-sending those stamps can't resurrect the history,
+ * while a genuinely new visit after the delete still starts a fresh row.
  */
-function mergeRatings(
-  a: Record<string, number>,
-  b: Record<string, number>,
-): Record<string, number> {
-  const out: Record<string, number> = { ...a };
-  for (const [ts, r] of Object.entries(b)) {
-    const v = Number(r);
-    if (!Number.isFinite(v) || v < 1 || v > 5) continue;
-    const cur = out[ts];
-    if (cur === undefined || v > cur) out[ts] = Math.round(v);
+export function tombstoneColumns(prev: VisitedShopRow, tsMs: number) {
+  const side = rowSide(prev);
+  return {
+    visits: '[]',
+    removedVisits: JSON.stringify(mergeRemoved(side.removedVisits, side.visits)),
+    visitNotes: '{}',
+    visitRatings: '{}',
+    deleted: true,
+    updatedAt: new Date(tsMs),
+    serverUpdatedAt: new Date(),
+  };
+}
+
+export interface StampPlace {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  googleMapsUri?: string | null;
+}
+
+/**
+ * Server-originated visit stamp (a booked coffee that actually happened).
+ * Goes through the same merge as client writes so a visit the user already
+ * removed stays removed, and user-edited display fields aren't overwritten.
+ */
+export async function stampVisit(db: Db, userId: string, place: StampPlace, ts: number) {
+  const [prev] = await db
+    .select()
+    .from(visitedShops)
+    .where(and(eq(visitedShops.userId, userId), eq(visitedShops.placeId, place.placeId)));
+  if (prev) {
+    const side = rowSide(prev);
+    if (side.removedVisits.includes(ts)) return;
+    const visits = mergeVisits(side.visits, [ts]);
+    await db
+      .update(visitedShops)
+      .set({
+        visits: JSON.stringify(visits),
+        googleMapsUri: prev.googleMapsUri ?? place.googleMapsUri ?? null,
+        deleted: false,
+        // Bump the LWW key so a revived tombstone row wins over the delete.
+        updatedAt: new Date(Math.max(Date.now(), asMs(prev.updatedAt) + 1)),
+        serverUpdatedAt: new Date(),
+      })
+      .where(and(eq(visitedShops.userId, userId), eq(visitedShops.placeId, place.placeId)));
+    return;
   }
-  return out;
+  await db.insert(visitedShops).values({
+    userId,
+    placeId: place.placeId,
+    name: place.name,
+    address: place.address,
+    lat: place.lat,
+    lng: place.lng,
+    googleMapsUri: place.googleMapsUri ?? null,
+    city: null,
+    visits: JSON.stringify([ts]),
+    removedVisits: '[]',
+    visitNotes: '{}',
+    visitRatings: '{}',
+    updatedAt: new Date(),
+    serverUpdatedAt: new Date(),
+    deleted: false,
+  });
+}
+
+/** Undo a server stamp (booking cancelled after it was stamped). */
+export async function unstampVisit(db: Db, userId: string, placeId: string, ts: number) {
+  const [prev] = await db
+    .select()
+    .from(visitedShops)
+    .where(and(eq(visitedShops.userId, userId), eq(visitedShops.placeId, placeId)));
+  if (!prev) return;
+  const side = rowSide(prev);
+  if (!side.visits.includes(ts)) return;
+  const h = mergeVisitHistory({ ...side, removedVisits: [...side.removedVisits, ts] }, { visits: [] });
+  await db
+    .update(visitedShops)
+    .set({
+      visits: JSON.stringify(h.visits),
+      removedVisits: JSON.stringify(h.removedVisits),
+      visitNotes: JSON.stringify(h.visitNotes),
+      visitRatings: JSON.stringify(h.visitRatings),
+      deleted: h.visits.length === 0 ? true : prev.deleted,
+      updatedAt: new Date(Math.max(Date.now(), asMs(prev.updatedAt) + 1)),
+      serverUpdatedAt: new Date(),
+    })
+    .where(and(eq(visitedShops.userId, userId), eq(visitedShops.placeId, placeId)));
 }
 
 export async function getSessionUser(env: AuthEnv, request: Request) {
@@ -225,3 +348,24 @@ export async function getSessionContext(env: AuthEnv, request: Request) {
  * the Resend SDK via this module. Re-exported here so existing call
  * sites that import { jsonError } from passport keep working. */
 export { jsonError, jsonErrorCoded } from './jsonError';
+
+/**
+ * A cancelled booking's passport stamp (if it got one — either from the
+ * nightly post-meeting stamp, or from the old approve-time stamp) is no
+ * longer a coffee that happened. Best-effort: never fails the cancel.
+ */
+export async function unstampCancelledBooking(
+  db: Db,
+  row: typeof bookings.$inferSelect,
+): Promise<void> {
+  if (!row.passportStampedAt || !row.placeId) return;
+  try {
+    await unstampVisit(db, row.organizerUserId, row.placeId, asMs(row.scheduledAt));
+    await db.update(bookings).set({ passportStampedAt: null }).where(eq(bookings.id, row.id));
+  } catch (e) {
+    console.error('[passport] unstamp on cancel failed', {
+      bookingId: row.id,
+      err: e instanceof Error ? e.message : String(e),
+    });
+  }
+}

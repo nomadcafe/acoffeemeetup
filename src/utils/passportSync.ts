@@ -10,6 +10,7 @@ export interface VisitedShopWire {
   googleMapsUri?: string;
   city?: string;
   visits: number[];
+  removedVisits?: number[];
   visitNotes?: Record<string, string>;
   visitRatings?: Record<string, number>;
   updatedAt: number;
@@ -28,6 +29,7 @@ export function toWire(s: VisitedShopSnapshot): VisitedShopWire {
     googleMapsUri: s.googleMapsUri,
     city: s.city,
     visits: s.visits,
+    removedVisits: s.removedVisits && s.removedVisits.length > 0 ? s.removedVisits : undefined,
     visitNotes: notes && Object.keys(notes).length > 0 ? notes : undefined,
     visitRatings: ratings && Object.keys(ratings).length > 0 ? ratings : undefined,
     updatedAt: s.updatedAt,
@@ -44,6 +46,7 @@ export function fromWire(w: VisitedShopWire): VisitedShopSnapshot {
     googleMapsUri: w.googleMapsUri,
     city: w.city,
     visits: w.visits,
+    removedVisits: w.removedVisits,
     visitNotes: w.visitNotes,
     visitRatings: w.visitRatings,
     updatedAt: w.updatedAt,
