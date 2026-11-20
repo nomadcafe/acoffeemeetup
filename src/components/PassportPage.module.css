@@ -677,3 +677,138 @@
 .exportButton:hover {
   background: #faf6f1;
 }
+
+/* ---------- add a visit (search + date) ---------- */
+.addCard {
+  background: var(--ac-surface);
+  border-radius: var(--ac-radius-md);
+  box-shadow: var(--ac-shadow-card);
+  padding: 1.25rem;
+}
+
+.addCard .sectionTitle {
+  margin-bottom: 0.75rem;
+}
+
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.addSearch {
+  position: relative;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.addInput {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.addSuggestions {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-border-strong);
+  border-radius: var(--ac-radius-sm);
+  box-shadow: var(--ac-shadow-card);
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.addSuggestion {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ac-text);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.addSuggestion:hover,
+.addSuggestion:focus-visible {
+  background: var(--ac-surface-tinted, rgba(111, 78, 55, 0.06));
+}
+
+.addPicked {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.4rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--ac-accent);
+  border-radius: var(--ac-radius-sm);
+}
+
+.addPickedName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.addChange {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--ac-accent);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.addDate {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--ac-border-strong);
+  border-radius: var(--ac-radius-sm);
+  background: var(--ac-surface);
+  color: var(--ac-text);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.addCard .shareButton {
+  min-height: 2.4rem;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.listHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.listHeaderActions .exportButton {
+  margin-left: 0;
+}
+
+/* Empty state: the add-a-visit card below is now the primary action. */
+.emptyCtaSecondary {
+  color: var(--ac-accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+}

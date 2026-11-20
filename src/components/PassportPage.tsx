@@ -20,6 +20,7 @@ import { HeatmapGrid } from './HeatmapGrid';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { GithubLink } from './GithubLink';
 import { TrajectoryMap } from './TrajectoryMap';
+import { AddVisitCard } from './passport/AddVisitCard';
 import { VisitNoteInput } from './VisitNoteInput';
 import { VisitRating } from './VisitRating';
 import styles from './PassportPage.module.css';
@@ -81,7 +82,11 @@ export function PassportPage() {
       }
       cutoff = d.getTime();
     }
-    const q = nameQuery.trim().toLocaleLowerCase();
+    // Name / time filters are only shown from 6 cafés up (see
+    // showListFilters); when hidden they must not keep filtering.
+    const filtersVisible = sortedVisited.length >= 6;
+    if (!filtersVisible) cutoff = -Infinity;
+    const q = filtersVisible ? nameQuery.trim().toLocaleLowerCase() : '';
     return sortedVisited.filter((s) => {
       if (cityFilter && (s.city && s.city.trim() ? s.city : null) !== cityFilter) return false;
       if (cutoff !== -Infinity) {
@@ -99,6 +104,16 @@ export function PassportPage() {
   }, [sortedVisited, cityFilter, timeFilter, nameQuery]);
 
   const streakFires = streakFireEmoji(streak);
+
+  /* Progressive disclosure: with only a stamp or two, a 90-day heatmap,
+   * "since" date and three list filters are mostly empty chrome. They
+   * appear once there's enough data to make them worth reading. */
+  const showHistoryViews = totalVisits >= 5;
+  const showListFilters = count >= 6;
+  const onAdded = (placeId: string) => {
+    // Let the new row render, then scroll to it and flash it.
+    window.setTimeout(() => handleTrajectoryMarkerClick(placeId), 50);
+  };
 
   const allTimestamps = useMemo(
     () => visitedShops.flatMap((s) => s.visits),
@@ -255,12 +270,15 @@ export function PassportPage() {
         </div>
 
         {count === 0 ? (
-          <div className={styles.emptyCard}>
-            <p className={styles.empty}>{t('visited.empty')}</p>
-            <a className={styles.emptyCta} href={homeHref}>
-              {t('passport.emptyCta')}
-            </a>
-          </div>
+          <>
+            <div className={styles.emptyCard}>
+              <p className={styles.empty}>{t('passport.emptyLead')}</p>
+              <a className={styles.emptyCtaSecondary} href={homeHref}>
+                {t('passport.emptyCta')}
+              </a>
+            </div>
+            <AddVisitCard />
+          </>
         ) : (
           <>
             <section className={styles.statsGrid} aria-label={t('passport.statsLabel')}>
@@ -302,7 +320,7 @@ export function PassportPage() {
                   <div className={styles.statLabel}>{t('passport.statStreak')}</div>
                 </div>
               ) : null}
-              {firstVisitDate != null ? (
+              {showHistoryViews && firstVisitDate != null ? (
                 <div className={styles.statCard}>
                   <div className={styles.statValueSmall}>
                     {formatAbsoluteDate(firstVisitDate, locale)}
@@ -349,10 +367,33 @@ export function PassportPage() {
               </section>
             ) : null}
 
-            <section className={styles.heatmapSection} aria-label={t('passport.heatmapTitle')}>
-              <div className={styles.sectionHeader}>
+            {showHistoryViews ? (
+              <section className={styles.heatmapSection} aria-label={t('passport.heatmapTitle')}>
                 <h2 className={styles.sectionTitle}>{t('passport.heatmapTitle')}</h2>
-                <div>
+                <p className={styles.sectionSubtitle}>{t('passport.heatmapSubtitle')}</p>
+                <div className={styles.heatmapWrap}>
+                  <HeatmapGrid timestamps={allTimestamps} days={90} />
+                </div>
+              </section>
+            ) : null}
+
+            {trajectoryStopCount >= 2 ? (
+              <TrajectoryMap
+                visitedShops={visitedShops}
+                onMarkerClick={handleTrajectoryMarkerClick}
+              />
+            ) : null}
+
+            <AddVisitCard onAdded={onAdded} />
+
+            <section className={styles.listSection} aria-label={t('passport.listTitle')}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>
+                  {t('passport.listTitle', { count: filteredVisited.length })}
+                </h2>
+                {/* Share / export live with the list now, so they stay
+                    available before the heatmap section appears. */}
+                <div className={styles.listHeaderActions}>
                   <button
                     type="button"
                     className={styles.shareButton}
@@ -370,10 +411,6 @@ export function PassportPage() {
                   </button>
                 </div>
               </div>
-              <p className={styles.sectionSubtitle}>{t('passport.heatmapSubtitle')}</p>
-              <div className={styles.heatmapWrap}>
-                <HeatmapGrid timestamps={allTimestamps} days={90} />
-              </div>
               {shareStatus ? (
                 <p
                   className={
@@ -384,69 +421,60 @@ export function PassportPage() {
                   {shareStatus.message}
                 </p>
               ) : null}
-            </section>
-
-            {trajectoryStopCount >= 2 ? (
-              <TrajectoryMap
-                visitedShops={visitedShops}
-                onMarkerClick={handleTrajectoryMarkerClick}
-              />
-            ) : null}
-
-            <section className={styles.listSection} aria-label={t('passport.listTitle')}>
-              <h2 className={styles.sectionTitle}>
-                {t('passport.listTitle', { count: filteredVisited.length })}
-              </h2>
-              <div className={styles.listControls}>
-                <div className={styles.searchWrap}>
-                  <span aria-hidden className={styles.searchIcon}>🔍</span>
-                  <input
-                    type="search"
-                    className={styles.searchInput}
-                    value={nameQuery}
-                    onChange={(e) => setNameQuery(e.target.value)}
-                    placeholder={t('passport.searchPlaceholder')}
-                    aria-label={t('passport.searchAria')}
-                  />
-                  {nameQuery ? (
-                    <button
-                      type="button"
-                      className={styles.searchClear}
-                      onClick={() => setNameQuery('')}
-                      aria-label={t('passport.searchClear')}
-                    >
-                      ×
-                    </button>
-                  ) : null}
+              {showListFilters ? (
+                <>
+                <div className={styles.listControls}>
+                  <div className={styles.searchWrap}>
+                    <span aria-hidden className={styles.searchIcon}>🔍</span>
+                    <input
+                      type="search"
+                      className={styles.searchInput}
+                      value={nameQuery}
+                      onChange={(e) => setNameQuery(e.target.value)}
+                      placeholder={t('passport.searchPlaceholder')}
+                      aria-label={t('passport.searchAria')}
+                    />
+                    {nameQuery ? (
+                      <button
+                        type="button"
+                        className={styles.searchClear}
+                        onClick={() => setNameQuery('')}
+                        aria-label={t('passport.searchClear')}
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              <div
-                className={styles.timeFilterRow}
-                role="tablist"
-                aria-label={t('passport.timeFilterAria')}
-              >
-                {(['all', 'today', 'week'] as const).map((kind) => {
-                  const active = timeFilter === kind;
-                  return (
-                    <button
-                      key={kind}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      className={`${styles.timeFilterTab}${active ? ' ' + styles.timeFilterTabActive : ''}`}
-                      onClick={() => setTimeFilter(kind)}
-                    >
-                      {t(
-                        kind === 'all'
-                          ? 'passport.timeAll'
-                          : kind === 'today'
-                            ? 'passport.timeToday'
-                            : 'passport.timeWeek',
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                <div
+                  className={styles.timeFilterRow}
+                  role="tablist"
+                  aria-label={t('passport.timeFilterAria')}
+                >
+                  {(['all', 'today', 'week'] as const).map((kind) => {
+                    const active = timeFilter === kind;
+                    return (
+                      <button
+                        key={kind}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        className={`${styles.timeFilterTab}${active ? ' ' + styles.timeFilterTabActive : ''}`}
+                        onClick={() => setTimeFilter(kind)}
+                      >
+                        {t(
+                          kind === 'all'
+                            ? 'passport.timeAll'
+                            : kind === 'today'
+                              ? 'passport.timeToday'
+                              : 'passport.timeWeek',
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                </>
+              ) : null}
               {filteredVisited.length === 0 ? (
                 <p className={styles.listEmpty}>{t('passport.listFilteredEmpty')}</p>
               ) : null}

@@ -22,7 +22,7 @@ import type {
 } from '../types';
 import { useI18n } from './I18nContext';
 import { useStarredShops } from '../hooks/useStarredShops';
-import { useVisitedShops } from '../hooks/useVisitedShops';
+import { useVisitedShops, type VisitedShopInput } from '../hooks/useVisitedShops';
 import { geocodeParties } from '../utils/geocoding';
 import { isOpenAt, meetAtWallTime } from '../utils/openingHours';
 import { calculateMidpoint, centroid } from '../utils/midpoint';
@@ -81,6 +81,7 @@ interface AppContextType extends AppState {
   toggleStar: (shop: CoffeeShop) => void;
   isStarred: (shopId: string) => boolean;
   addVisit: (shop: CoffeeShop) => void;
+  addVisitAt: (shop: VisitedShopInput, ts: number) => void;
   removeVisited: (shopId: string) => void;
   removeVisitAt: (shopId: string, ts: number) => void;
   setVisitNote: (shopId: string, ts: number, note: string) => void;
@@ -528,6 +529,7 @@ export function AppProvider({
   const {
     visitedShops,
     addVisit,
+    addVisitAt,
     removeVisited,
     removeVisitAt,
     setVisitNote,
@@ -1335,6 +1337,7 @@ export function AppProvider({
       removeAddressTemplate,
       isStarred,
       addVisit,
+      addVisitAt,
       removeVisited,
       removeVisitAt,
       setVisitNote,
@@ -1391,6 +1394,7 @@ export function AppProvider({
       removeAddressTemplate,
       isStarred,
       addVisit,
+      addVisitAt,
       removeVisited,
       removeVisitAt,
       setVisitNote,

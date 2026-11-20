@@ -89,10 +89,22 @@ export function visitedSnapshotToCoffeeShop(s: VisitedShopSnapshot): CoffeeShop 
   };
 }
 
+/** The fields needed to stamp a café that isn't from a search result. */
+export interface VisitedShopInput {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  googleMapsUri?: string | null;
+}
+
 export function useVisitedShops(): {
   visitedShops: VisitedShopSnapshot[];
   visitedShopIds: string[];
   addVisit: (shop: CoffeeShop) => void;
+  /** Stamp a visit at a chosen time (e.g. "I was there yesterday"). */
+  addVisitAt: (shop: VisitedShopInput, ts: number) => void;
   removeVisited: (shopId: string) => void;
   /** Remove a single visit timestamp; clears the shop entirely if it was the last visit. */
   removeVisitAt: (shopId: string, ts: number) => void;
@@ -161,6 +173,44 @@ export function useVisitedShops(): {
     },
     [visitedShops],
   );
+
+  const addVisitAt = useCallback((shop: VisitedShopInput, ts: number) => {
+    const now = Date.now();
+    setVisitedShops((prev) => {
+      const existing = prev.find((s) => s.id === shop.id);
+      if (existing) {
+        // Same rule as the sync merge: a stamp within 60s of an existing one
+        // is a double-tap, not a second visit.
+        if (existing.visits.some((v) => Math.abs(v - ts) < 60_000)) return prev;
+        return prev.map((s) =>
+          s.id === shop.id
+            ? {
+                ...s,
+                visits: [...s.visits, ts].sort((a, b) => b - a),
+                updatedAt: now,
+              }
+            : s,
+        );
+      }
+      const snap: VisitedShopSnapshot = {
+        id: shop.id,
+        name: shop.name,
+        address: shop.address,
+        lat: shop.lat,
+        lng: shop.lng,
+        googleMapsUri: shop.googleMapsUri ?? undefined,
+        visits: [ts],
+        city: extractCity(shop.address) ?? undefined,
+        updatedAt: now,
+      };
+      return [snap, ...prev];
+    });
+    track('place_visited', {
+      placeId: shop.id,
+      isNew: !visitedShops.some((s) => s.id === shop.id),
+      backdated: now - ts > 60 * 60_000,
+    });
+  }, [visitedShops]);
 
   const removeVisited = useCallback((shopId: string) => {
     setVisitedShops((prev) => prev.filter((s) => s.id !== shopId));
@@ -279,6 +329,7 @@ export function useVisitedShops(): {
     visitedShops,
     visitedShopIds,
     addVisit,
+    addVisitAt,
     removeVisited,
     removeVisitAt,
     setVisitNote,
