@@ -5,74 +5,16 @@ import { track } from '../../utils/analytics';
 import { useCafeAutocomplete } from '../../hooks/useCafeAutocomplete';
 import styles from '../AccountPage.module.css';
 import { type StatusBanner, useAccountRefresh, useAutoDismissOk, useReportDirty } from './shared';
-
-type FeaturedCafeRelation = 'owned' | 'favorite';
-
-/** Draft shape held in form state. Mirrors the request body sent on save
- *  plus server-computed `ownerVerified` (read-only here; refreshed by the
- *  GET round-trip after each save). `websiteUri` is captured from the
- *  picker so the server can re-run domain verification on save without
- *  another Places API call — never shown in the UI. */
-interface FeaturedCafeDraft {
-  placeId: string;
-  name: string;
-  address: string;
-  lat: number;
-  lng: number;
-  relation: FeaturedCafeRelation;
-  note: string;
-  linkInstagram: string;
-  linkWebsite: string;
-  linkMenu: string;
-  linkBookingExternal: string;
-  ownerPinnedNote: string;
-  websiteUri: string | null;
-  /** Google Maps deep link captured from the picker. Persisted server-
-   *  side so the booking-approve flow can surface "Open in Maps" on
-   *  the visitor's confirmation email when this cafe is the host's
-   *  pick. Not user-editable in the AccountPage UI. */
-  googleMapsUri: string | null;
-  ownerVerified: boolean;
-}
-
-const FEATURED_MAX = 5;
-
-const FEATURED_NOTE_MAX = 140;
-
-const FEATURED_PINNED_NOTE_MAX = 80;
-
-const FEATURED_LINK_MAX = 200;
-
-function emptyCafeFromPicked(
-  picked: {
-    placeId: string;
-    name: string;
-    address: string;
-    lat: number;
-    lng: number;
-    websiteUri?: string | null;
-    googleMapsUri?: string | null;
-  },
-  relation: FeaturedCafeRelation,
-): FeaturedCafeDraft {
-  return {
-    placeId: picked.placeId,
-    name: picked.name,
-    address: picked.address,
-    lat: picked.lat,
-    lng: picked.lng,
-    relation,
-    note: '',
-    linkInstagram: '',
-    linkWebsite: '',
-    linkMenu: '',
-    linkBookingExternal: '',
-    ownerPinnedNote: '',
-    websiteUri: picked.websiteUri ?? null,
-    googleMapsUri: picked.googleMapsUri ?? null,
-    ownerVerified: false,
-  };
-}
+import { FeaturedCafeItem } from './FeaturedCafeItem';
+import {
+  type ApiFeaturedCafe,
+  cafeFromApi,
+  cafesKey,
+  emptyCafeFromPicked,
+  FEATURED_MAX,
+  type FeaturedCafeDraft,
+  type FeaturedCafeRelation,
+} from './featuredCafes';
 
 export function FeaturedCafesCard() {
   const refreshAccount = useAccountRefresh();
@@ -80,19 +22,6 @@ export function FeaturedCafesCard() {
   const { visitedShops } = useApp();
   const [cafes, setCafes] = useState<FeaturedCafeDraft[]>([]);
   // Snapshot of what's saved server-side (set on load and after each save).
-  const cafesKey = (list: FeaturedCafeDraft[]) =>
-    JSON.stringify(
-      list.map((c) => [
-        c.placeId,
-        c.relation,
-        c.note.trim(),
-        c.linkInstagram.trim(),
-        c.linkWebsite.trim(),
-        c.linkMenu.trim(),
-        c.linkBookingExternal.trim(),
-        c.ownerPinnedNote.trim(),
-      ]),
-    );
   const [savedCafesKey, setSavedCafesKey] = useState(() => cafesKey([]));
   useReportDirty('account-cafes', cafesKey(cafes) !== savedCafesKey);
   const [cafeQuery, setCafeQuery] = useState('');
@@ -129,38 +58,9 @@ export function FeaturedCafesCard() {
       try {
         const res = await fetch('/api/account');
         if (!res.ok) return;
-        const data = (await res.json()) as {
-          featuredCafes?: Array<Omit<FeaturedCafeDraft, 'note' | 'linkInstagram' | 'linkWebsite' | 'linkMenu' | 'linkBookingExternal' | 'ownerPinnedNote' | 'websiteUri' | 'googleMapsUri'> & {
-            note: string | null;
-            linkInstagram: string | null;
-            linkWebsite: string | null;
-            linkMenu: string | null;
-            linkBookingExternal: string | null;
-            ownerPinnedNote: string | null;
-            googleMapsUri: string | null;
-          }>;
-        };
+        const data = (await res.json()) as { featuredCafes?: ApiFeaturedCafe[] };
         if (cancelled || !data.featuredCafes) return;
-        const loaded: FeaturedCafeDraft[] = data.featuredCafes.map((c) => ({
-            placeId: c.placeId,
-            name: c.name,
-            address: c.address,
-            lat: c.lat,
-            lng: c.lng,
-            relation: c.relation,
-            note: c.note ?? '',
-            linkInstagram: c.linkInstagram ?? '',
-            linkWebsite: c.linkWebsite ?? '',
-            linkMenu: c.linkMenu ?? '',
-            linkBookingExternal: c.linkBookingExternal ?? '',
-            ownerPinnedNote: c.ownerPinnedNote ?? '',
-            // websiteUri is server-only — not returned by GET. Stays null
-            // until the user re-picks via autocomplete; verification flag
-            // we already have stays sticky.
-            websiteUri: null,
-            googleMapsUri: c.googleMapsUri,
-            ownerVerified: c.ownerVerified,
-          }));
+        const loaded = data.featuredCafes.map(cafeFromApi);
         setCafes(loaded);
         setSavedCafesKey(cafesKey(loaded));
       } catch {
@@ -249,33 +149,9 @@ export function FeaturedCafesCard() {
       try {
         const refresh = await fetch('/api/account');
         if (refresh.ok) {
-          const data = (await refresh.json()) as {
-            featuredCafes?: Array<{
-              placeId: string; name: string; address: string; lat: number; lng: number;
-              relation: FeaturedCafeRelation;
-              note: string | null;
-              linkInstagram: string | null; linkWebsite: string | null; linkMenu: string | null; linkBookingExternal: string | null;
-              ownerPinnedNote: string | null;
-              googleMapsUri: string | null;
-              ownerVerified: boolean;
-            }>;
-          };
+          const data = (await refresh.json()) as { featuredCafes?: ApiFeaturedCafe[] };
           if (data.featuredCafes && mountedRef.current) {
-            setCafes(
-              data.featuredCafes.map((c) => ({
-                placeId: c.placeId, name: c.name, address: c.address, lat: c.lat, lng: c.lng,
-                relation: c.relation,
-                note: c.note ?? '',
-                linkInstagram: c.linkInstagram ?? '',
-                linkWebsite: c.linkWebsite ?? '',
-                linkMenu: c.linkMenu ?? '',
-                linkBookingExternal: c.linkBookingExternal ?? '',
-                ownerPinnedNote: c.ownerPinnedNote ?? '',
-                websiteUri: null,
-                googleMapsUri: c.googleMapsUri,
-                ownerVerified: c.ownerVerified,
-              })),
-            );
+            setCafes(data.featuredCafes.map(cafeFromApi));
           }
         }
       } catch {
@@ -311,189 +187,12 @@ export function FeaturedCafesCard() {
         {cafes.length > 0 ? (
         <div className={styles.featuredCafeGrid}>
         {cafes.map((cafe, idx) => (
-          <div key={cafe.placeId} className={styles.featuredCafeCard}>
-            <div className={styles.featuredCafeChosen}>
-              <div className={styles.featuredCafeMeta}>
-                <strong>
-                  {cafe.name}
-                  {cafe.relation === 'owned' && cafe.ownerVerified ? (
-                    <span
-                      className={styles.featuredCafeVerified}
-                      title={t('account.featuredCafeVerifiedTitle')}
-                      aria-label={t('account.featuredCafeVerifiedTitle')}
-                    >
-                      {' '}✓
-                    </span>
-                  ) : null}
-                </strong>
-                <span className={styles.featuredCafeAddress}>{cafe.address}</span>
-              </div>
-              <button
-                type="button"
-                className={styles.linkRemove}
-                onClick={() => removeCafe(idx)}
-                aria-label={t('account.featuredCafeRemoveAria')}
-              >
-                ×
-              </button>
-            </div>
-
-            <div
-              className={styles.featuredCafeRelation}
-              role="radiogroup"
-              aria-label={t('account.featuredCafeRelationLabel')}
-              onKeyDown={(e) => {
-                // WAI-ARIA radiogroup pattern: ←/↑ moves to previous,
-                // →/↓ moves to next, wrap around. Without this, only
-                // Tab works and the user can't switch relations with
-                // the keyboard once a pill has focus.
-                if (
-                  e.key !== 'ArrowLeft' &&
-                  e.key !== 'ArrowRight' &&
-                  e.key !== 'ArrowUp' &&
-                  e.key !== 'ArrowDown'
-                ) {
-                  return;
-                }
-                e.preventDefault();
-                const next: FeaturedCafeRelation =
-                  cafe.relation === 'favorite' ? 'owned' : 'favorite';
-                updateCafe(idx, { relation: next });
-                // Move focus onto the now-checked pill so SR reads the
-                // new selection.
-                const target = e.currentTarget.querySelector<HTMLButtonElement>(
-                  `button[aria-checked="true"]`,
-                );
-                target?.focus();
-              }}
-            >
-              <button
-                type="button"
-                role="radio"
-                aria-checked={cafe.relation === 'favorite'}
-                tabIndex={cafe.relation === 'favorite' ? 0 : -1}
-                className={`${styles.featuredCafeRelationPill}${
-                  cafe.relation === 'favorite'
-                    ? ' ' + styles.featuredCafeRelationPillActive
-                    : ''
-                }`}
-                onClick={() => updateCafe(idx, { relation: 'favorite' })}
-              >
-                <span className={styles.featuredCafeRelationPillTitle}>
-                  <span aria-hidden>❤️</span>
-                  {t('account.featuredCafeRelationFavoriteTitle')}
-                </span>
-                <span className={styles.featuredCafeRelationPillHint}>
-                  {t('account.featuredCafeRelationFavoriteHint')}
-                </span>
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={cafe.relation === 'owned'}
-                tabIndex={cafe.relation === 'owned' ? 0 : -1}
-                className={`${styles.featuredCafeRelationPill}${
-                  cafe.relation === 'owned'
-                    ? ' ' + styles.featuredCafeRelationPillActive
-                    : ''
-                }`}
-                onClick={() => updateCafe(idx, { relation: 'owned' })}
-              >
-                <span className={styles.featuredCafeRelationPillTitle}>
-                  <span aria-hidden>🏠</span>
-                  {t('account.featuredCafeRelationOwnedTitle')}
-                </span>
-                <span className={styles.featuredCafeRelationPillHint}>
-                  {t('account.featuredCafeRelationOwnedHint')}
-                </span>
-              </button>
-            </div>
-
-            {/* Verification status hint on owned cards: explain why the
-                badge is/isn't showing. Most useful for unverified owners
-                so they know auto-verify is gated on email-domain match. */}
-            {cafe.relation === 'owned' ? (
-              <p
-                className={styles.usernameHint}
-                style={{ marginTop: 6, marginBottom: 0 }}
-              >
-                {cafe.ownerVerified
-                  ? t('account.featuredCafeVerifiedHint')
-                  : t('account.featuredCafeUnverifiedHint')}
-              </p>
-            ) : null}
-
-            {/* "Why this café" — short blurb under the address. Same
-                shape as bio. Empty stays empty. */}
-            <label className={styles.fieldGroup} style={{ marginTop: 12 }}>
-              <span className={styles.fieldLabel}>
-                {t('account.featuredCafeNoteLabel')}
-              </span>
-              <textarea
-                className={styles.bioTextarea}
-                rows={2}
-                maxLength={FEATURED_NOTE_MAX}
-                placeholder={t('account.featuredCafeNotePlaceholder')}
-                value={cafe.note}
-                onChange={(e) => updateCafe(idx, { note: e.target.value })}
-              />
-              <span className={styles.charCount} aria-live="polite">
-                {cafe.note.length} / {FEATURED_NOTE_MAX}
-              </span>
-            </label>
-
-            {/* Owned-only "what's brewing" pinned note — shorter, framed
-                as "this week's special" so owners are nudged to refresh
-                rather than treating it as a static second blurb. */}
-            {cafe.relation === 'owned' ? (
-              <label className={styles.fieldGroup} style={{ marginTop: 8 }}>
-                <span className={styles.fieldLabel}>
-                  {t('account.featuredCafePinnedLabel')}
-                </span>
-                <input
-                  type="text"
-                  className={styles.linkLabelInput}
-                  maxLength={FEATURED_PINNED_NOTE_MAX}
-                  placeholder={t('account.featuredCafePinnedPlaceholder')}
-                  value={cafe.ownerPinnedNote}
-                  onChange={(e) => updateCafe(idx, { ownerPinnedNote: e.target.value })}
-                />
-                <span className={styles.charCount} aria-live="polite">
-                  {cafe.ownerPinnedNote.length} / {FEATURED_PINNED_NOTE_MAX}
-                </span>
-              </label>
-            ) : null}
-
-            {/* 4 typed link slots — the public profile picks an icon per
-                slot. Empty slots collapse on save. We don't validate
-                live; server enforces http(s). */}
-            <div className={styles.fieldGroup} style={{ marginTop: 8 }}>
-              <span className={styles.fieldLabel}>{t('account.featuredCafeLinksLabel')}</span>
-              {(
-                [
-                  ['linkInstagram', t('account.featuredCafeLinkInstagram')],
-                  ['linkWebsite', t('account.featuredCafeLinkWebsite')],
-                  ['linkMenu', t('account.featuredCafeLinkMenu')],
-                  ['linkBookingExternal', t('account.featuredCafeLinkBooking')],
-                ] as Array<[keyof FeaturedCafeDraft, string]>
-              ).map(([field, label]) => (
-                <div className={styles.linkRow} key={field}>
-                  <span className={styles.linkLabelInput} style={{ pointerEvents: 'none' }}>
-                    {label}
-                  </span>
-                  <input
-                    type="url"
-                    className={styles.linkUrlInput}
-                    maxLength={FEATURED_LINK_MAX}
-                    placeholder="https://…"
-                    value={cafe[field] as string}
-                    onChange={(e) => updateCafe(idx, { [field]: e.target.value } as Partial<FeaturedCafeDraft>)}
-                    aria-label={label}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+          <FeaturedCafeItem
+            key={cafe.placeId}
+            cafe={cafe}
+            onChange={(patch) => updateCafe(idx, patch)}
+            onRemove={() => removeCafe(idx)}
+          />
         ))}
         </div>
         ) : null}
