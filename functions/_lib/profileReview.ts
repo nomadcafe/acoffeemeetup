@@ -63,6 +63,7 @@ export interface ReviewSnapshot {
   username: string | null;
   displayName: string | null;
   bio: string | null;
+  image: string | null;
   socialLinks: string | null;
   profilePublic: boolean;
   profileSuspendedAt: Date | null;
@@ -76,6 +77,7 @@ export async function loadReviewSnapshot(db: Db, userId: string): Promise<Review
       username: user.username,
       displayName: user.displayName,
       bio: user.bio,
+      image: user.image,
       socialLinks: user.socialLinks,
       profilePublic: user.profilePublic,
       profileSuspendedAt: user.profileSuspendedAt,
@@ -102,7 +104,13 @@ export function renderProfileFacts(p: ReviewSnapshot, origin: string): string {
     : p.profilePublic
       ? '<strong style="color:#4d7c0f">public</strong>'
       : 'private';
+  // Only http(s) URLs we'd render on the profile anyway (uploads / Google).
+  const avatar =
+    p.image && /^https:\/\//i.test(p.image)
+      ? `<img src="${esc(p.image)}" alt="avatar" width="96" height="96" style="border-radius:50%;object-fit:cover;border:1px solid #e6dcd2">`
+      : '<em>none</em>';
   return `<table style="border-collapse:collapse;font-size:14px;color:#2c1810">
+${row('Avatar', avatar)}
 ${row('Handle', handle)}
 ${row('Status', status)}
 ${row('Display name', p.displayName ? esc(p.displayName) : '<em>—</em>')}

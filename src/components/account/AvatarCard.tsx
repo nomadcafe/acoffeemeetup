@@ -10,9 +10,27 @@ const AVATAR_WEBP_QUALITY = 0.85;
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
+/** Encode the canvas as `type`; resolves to whatever the browser produced. */
+async function encodeCanvas(
+  canvas: OffscreenCanvas | HTMLCanvasElement,
+  type: 'image/webp' | 'image/jpeg',
+): Promise<Blob> {
+  if ('convertToBlob' in canvas) {
+    return await canvas.convertToBlob({ type, quality: AVATAR_WEBP_QUALITY });
+  }
+  return await new Promise<Blob>((resolve, reject) => {
+    (canvas as HTMLCanvasElement).toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('canvas toBlob returned null'))),
+      type,
+      AVATAR_WEBP_QUALITY,
+    );
+  });
+}
+
 /**
- * Resize + crop an image File to a square webp Blob no larger than
- * AVATAR_MAX_DIMENSION on either side. Center-crop to square so the
+ * Resize + crop an image File to a square Blob (webp, or jpeg where the
+ * browser can't encode webp) no larger than AVATAR_MAX_DIMENSION a side.
+ * Center-crop to square so the
  * circular avatar mask doesn't slice off important content
  * unpredictably (left/right ear, etc.).
  *
@@ -23,7 +41,7 @@ const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
  * Throws on decode failure (corrupt file, unsupported format) so the
  * caller can show a useful error rather than a silent retry.
  */
-async function resizeAvatarToWebp(file: File): Promise<Blob> {
+async function resizeAvatar(file: File): Promise<Blob> {
   // `imageOrientation: 'from-image'` honors the EXIF orientation tag —
   // without it, iPhone portraits decode to landscape and silently
   // upload sideways. Older browsers ignore the option (no harm).
@@ -52,23 +70,18 @@ async function resizeAvatarToWebp(file: File): Promise<Blob> {
   ctx.drawImage(bitmap, sx, sy, min, min, 0, 0, target, target);
   bitmap.close?.();
 
-  if ('convertToBlob' in canvas) {
-    return await canvas.convertToBlob({ type: 'image/webp', quality: AVATAR_WEBP_QUALITY });
-  }
-  // HTMLCanvasElement path — wrap toBlob in a promise.
-  return await new Promise<Blob>((resolve, reject) => {
-    (canvas as HTMLCanvasElement).toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('canvas toBlob returned null'))),
-      'image/webp',
-      AVATAR_WEBP_QUALITY,
-    );
-  });
+  // Safari (and every iOS browser) can't encode webp from a canvas and
+  // silently hands back a PNG instead. Detect that and re-encode as JPEG,
+  // which every browser can produce and is far smaller than PNG.
+  const webp = await encodeCanvas(canvas, 'image/webp');
+  if (webp.type === 'image/webp') return webp;
+  return await encodeCanvas(canvas, 'image/jpeg');
 }
 
 /**
  * Avatar editor card. Shows the current image (Google OAuth-supplied
  * or user-uploaded), a file picker, and a remove button. The picker
- * resizes to 512x512 webp client-side before POSTing the raw bytes —
+ * resizes to ≤512px (webp / jpeg) client-side before POSTing the raw bytes —
  * server-side validation is just type/size enforcement, no
  * server-side image processing required.
  */
@@ -117,21 +130,26 @@ export function AvatarCard({ initialImage }: { initialImage: string | null }) {
     abortRef.current = controller;
     setBusy(true);
     try {
-      const webp = await resizeAvatarToWebp(file);
+      const encoded = await resizeAvatar(file);
       if (controller.signal.aborted || !mountedRef.current) return;
-      if (webp.size > AVATAR_MAX_BYTES) {
+      if (encoded.size > AVATAR_MAX_BYTES) {
         setStatus({ kind: 'err', message: t('account.avatarTooLarge') });
         return;
       }
       const res = await fetch('/api/account/avatar', {
         method: 'POST',
-        headers: { 'content-type': 'image/webp' },
-        body: webp,
+        // The format actually produced — the server checks it against the
+        // bytes and rejects a mismatch.
+        headers: { 'content-type': encoded.type || 'image/jpeg' },
+        body: encoded,
         signal: controller.signal,
       });
       if (controller.signal.aborted || !mountedRef.current) return;
       if (!res.ok) {
-        setStatus({ kind: 'err', message: t('account.avatarUploadFailed') });
+        setStatus({
+          kind: 'err',
+          message: t(res.status === 429 ? 'account.avatarRateLimited' : 'account.avatarUploadFailed'),
+        });
         return;
       }
       const data = (await res.json()) as { image?: string };
@@ -139,7 +157,7 @@ export function AvatarCard({ initialImage }: { initialImage: string | null }) {
       if (data.image) setImage(data.image);
       setStatus({ kind: 'ok', message: t('account.avatarUploaded') });
       refreshAccount();
-      track('avatar_uploaded', { sizeKB: Math.round(webp.size / 1024) });
+      track('avatar_uploaded', { sizeKB: Math.round(encoded.size / 1024), type: encoded.type });
     } catch (e) {
       if (controller.signal.aborted || !mountedRef.current) return;
       // AbortError raised on user-driven cancel is silent; everything
@@ -197,7 +215,9 @@ export function AvatarCard({ initialImage }: { initialImage: string | null }) {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            /* No HEIC/HEIF: only Safari can decode it here. Leaving it out
+               also makes iOS hand over a JPEG from the photo library. */
+            accept="image/jpeg,image/png,image/webp"
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void handleFile(f);

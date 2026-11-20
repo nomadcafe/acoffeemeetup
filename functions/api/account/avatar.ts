@@ -3,19 +3,21 @@ import { type AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { user } from '../../_lib/db/schema';
 import { getSessionUser, jsonError } from '../../_lib/passport';
+import { avatarKey, deleteAvatarObjects } from '../../_lib/avatarStore';
+import { rateLimit, rateLimitResponse } from '../../_lib/rateLimit';
 
 /**
  * Avatar upload + clear. Lives at `/api/account/avatar`.
  *
- *   POST: body is the raw image bytes (the client resizes to 512x512
- *         and converts to webp client-side, so server-side we just
- *         validate the content-type / size and stream into R2). The
- *         response sets user.image to the public R2 URL.
+ *   POST: body is the raw image bytes. The client crops/resizes to
+ *         ≤512px and re-encodes (webp, or jpeg on Safari, which can't
+ *         encode webp from a canvas), so server-side we validate type /
+ *         size / magic bytes and store it under the matching format.
+ *         The response sets user.image to the public R2 URL.
  *
- *   DELETE: clears user.image. We don't delete the R2 object — keeping
- *           it lets us revert if the user removes by mistake, and the
- *           bucket is dirt-cheap. Periodic GC of orphaned keys can be
- *           a cron later.
+ *   DELETE: clears user.image AND deletes the R2 object(s). The URL
+ *           pattern is predictable, so a photo left in the bucket after
+ *           "remove" stayed publicly reachable.
  *
  * Why raw body, not multipart: the client always sends one image, no
  * other fields. Saves the multipart parser churn on Workers and keeps
@@ -35,18 +37,19 @@ function publicUrlFor(env: AuthEnv, key: string): string | null {
   return `${base}/${key}`;
 }
 
-/** R2 key for a user's avatar. We don't include a hash / version in the
- *  key — every upload overwrites in place. The browser cache busts via
- *  the user.image URL changing only when the path changes... actually
- *  it doesn't change here, so we append a `?v=ts` query in the response
- *  so the new image surfaces immediately. */
-function avatarKey(userId: string): string {
-  return `avatars/${userId}.webp`;
-}
+/** Uploads per user per hour — each one is a paid R2 write. */
+const UPLOADS_PER_HOUR = 20;
 
-export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, waitUntil }) => {
   const sessionUser = await getSessionUser(env, request);
   if (!sessionUser) return jsonError('Unauthorized', 401);
+
+  const limit = await rateLimit(
+    request,
+    { waitUntil },
+    { bucket: 'avatar-upload', limit: UPLOADS_PER_HOUR, windowSec: 3600, keyOverride: sessionUser.id },
+  );
+  if (!limit.ok) return rateLimitResponse(limit);
 
   if (!env.AVATARS || !env.AVATARS_PUBLIC_URL) {
     return jsonError('Avatar upload is not configured on this deployment', 503);
@@ -113,17 +116,20 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
     );
   }
 
-  const key = avatarKey(sessionUser.id);
+  const key = avatarKey(sessionUser.id, sniff);
   await env.AVATARS.put(key, buffer, {
     httpMetadata: {
-      // Always webp on the wire because the client converts before upload.
-      // If we ever accept jpeg/png raw, this needs to mirror contentType.
-      contentType: 'image/webp',
-      // 1-week edge cache — the URL changes via ?v= query on each upload,
-      // so stale variants of the previous avatar won't stick.
-      cacheControl: 'public, max-age=604800',
+      // The verified format — never a blanket label, so a jpeg from Safari
+      // isn't served as webp.
+      contentType: expectedType,
+      // 1-day cache. Each upload gets a fresh ?v= URL so new photos show
+      // at once; the shorter max-age bounds how long a removed photo can
+      // linger in edge / browser caches after its object is deleted.
+      cacheControl: 'public, max-age=86400',
     },
   });
+  // Drop the previous upload if it was stored under another format.
+  await deleteAvatarObjects(env, sessionUser.id, key);
 
   // Bust browser / edge caches by appending a version query — same R2
   // key gets overwritten in place but anyone holding the old URL keeps
@@ -138,15 +144,14 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
   return Response.json({ image: versioned });
 };
 
-/** Clear the user's avatar. We only null out user.image; the R2 object
- *  stays so a future "undo" or accidental-delete recovery is possible.
- *  Storage is cheap; orphaned keys can be reaped by a cron later. */
+/** Clear the user's avatar: null out user.image and delete the R2 object(s). */
 export const onRequestDelete: PagesFunction<AuthEnv> = async ({ request, env }) => {
   const sessionUser = await getSessionUser(env, request);
   if (!sessionUser) return jsonError('Unauthorized', 401);
 
   const db = getDb(env);
   await db.update(user).set({ image: null, updatedAt: new Date() }).where(eq(user.id, sessionUser.id));
+  await deleteAvatarObjects(env, sessionUser.id);
 
   return new Response(null, { status: 204 });
 };

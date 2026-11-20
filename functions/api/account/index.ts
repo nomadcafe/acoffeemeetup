@@ -12,6 +12,7 @@ import { user, featuredCafes } from '../../_lib/db/schema';
 import { getSessionUser, jsonError, jsonErrorCoded } from '../../_lib/passport';
 import { cleanProfileText, profileTextIssue } from '../../../src/utils/profileText';
 import { notifyProfileReview } from '../../_lib/profileReview';
+import { deleteAvatarObjects } from '../../_lib/avatarStore';
 import {
   GoogleMapsError,
   fetchPlaceWebsiteUri,
@@ -96,6 +97,9 @@ export const onRequestDelete: PagesFunction<AuthEnv> = async ({ request, env }) 
 
   const db = getDb(env);
   await db.delete(user).where(eq(user.id, sessionUser.id));
+  // The uploaded photo lives in R2, outside the cascade — delete it too or
+  // it stays public at its predictable URL after the account is gone.
+  await deleteAvatarObjects(env, sessionUser.id);
 
   const headers = new Headers();
   if (cookieHeaders.length > 0) {
