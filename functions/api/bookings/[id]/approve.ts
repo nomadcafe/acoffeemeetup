@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { and, eq, gte, inArray, lte, ne } from 'drizzle-orm';
 import { Resend } from 'resend';
+import { sendEmail } from '../../../_lib/sendEmail';
 import type { AuthEnv } from '../../../_lib/auth';
 import { getDb } from '../../../_lib/db';
 import { bookings, user } from '../../../_lib/db/schema';
@@ -253,7 +254,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, para
        * committed. Visitor will see the approved booking next time
        * they open /bookings (or the host's /yourname page). */
       try {
-        await resend.emails.send({
+        await sendEmail(resend, {
           from: env.RESEND_FROM_EMAIL,
           to: row.visitorEmail,
           replyTo: organizer.email,

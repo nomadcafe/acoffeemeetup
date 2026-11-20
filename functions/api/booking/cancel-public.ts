@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { Resend } from 'resend';
+import { sendEmail } from '../../_lib/sendEmail';
 import type { AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { bookings, user } from '../../_lib/db/schema';
@@ -137,7 +138,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
     /* Notification — log on failure but the cancellation already
      * committed in DB so the host will see it on /bookings either way. */
     try {
-      await resend.emails.send({
+      await sendEmail(resend, {
         from: env.RESEND_FROM_EMAIL,
         to: organizer.email,
         // Visitor is the one who cancelled — set Reply-To to them so the

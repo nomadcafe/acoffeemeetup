@@ -3,6 +3,7 @@ import { betterAuth } from 'better-auth';
 import { magicLink } from 'better-auth/plugins';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { Resend } from 'resend';
+import { sendEmail } from './sendEmail';
 import { getDb, type DbEnv } from './db';
 
 export interface AuthEnv extends DbEnv, SpendCapEnv {
@@ -144,7 +145,7 @@ export function createAuth(env: AuthEnv) {
       magicLink({
         expiresIn: 60 * 15, // 15 min
         sendMagicLink: async ({ email, url }) => {
-          await resend.emails.send({
+          await sendEmail(resend, {
             from: env.RESEND_FROM_EMAIL,
             to: email,
             // Reply-To = same as From so a "I didn't request this" reply

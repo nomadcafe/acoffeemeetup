@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { Resend } from 'resend';
+import { sendEmail } from '../../../_lib/sendEmail';
 import type { AuthEnv } from '../../../_lib/auth';
 import { getDb } from '../../../_lib/db';
 import { bookings, user } from '../../../_lib/db/schema';
@@ -105,7 +106,7 @@ export const onRequestDelete: PagesFunction<AuthEnv> = async ({ request, env, pa
      * signed in) will reflect it. Reply-To stays the host so the
      * visitor can ask about rescheduling. */
     try {
-      await resend.emails.send({
+      await sendEmail(resend, {
         from: env.RESEND_FROM_EMAIL,
         to: row.visitorEmail,
         // Host cancelled — Reply-To = host so the visitor can ask

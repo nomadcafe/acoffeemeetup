@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { Resend } from 'resend';
+import { sendEmail } from '../../_lib/sendEmail';
 import type { AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { bookingAttempts, bookings, user } from '../../_lib/db/schema';
@@ -278,7 +279,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
      * record, not a booking; preserving it keeps the per-IP throttle
      * meaningful even when sends fail. */
     try {
-      await resend.emails.send({
+      await sendEmail(resend, {
         from: env.RESEND_FROM_EMAIL,
         to: input.visitorEmail,
         // No reply-to here: the recipient address is whatever an anonymous

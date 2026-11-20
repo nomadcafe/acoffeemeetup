@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { Resend } from 'resend';
+import { sendEmail } from '../../_lib/sendEmail';
 import type { AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { proposals, user } from '../../_lib/db/schema';
@@ -271,7 +272,7 @@ async function notifySender(
   }
 
   const resend = new Resend(env.RESEND_API_KEY);
-  await resend.emails.send({
+  await sendEmail(resend, {
     from: env.RESEND_FROM_EMAIL,
     to: sender.email,
     subject,
