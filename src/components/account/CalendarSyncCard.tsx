@@ -9,6 +9,8 @@ interface CalendarSyncProps {
   initialSyncedAt: number | null;
   initialLastError: string | null;
   initialLastErrorAt: number | null;
+  /** Busy-time sync only matters once there are bookable hours. */
+  bookingOpen: boolean;
 }
 
 /**
@@ -27,6 +29,7 @@ export function CalendarSyncCard({
   initialSyncedAt,
   initialLastError,
   initialLastErrorAt,
+  bookingOpen,
 }: CalendarSyncProps) {
   const refreshAccount = useAccountRefresh();
   const { t, locale } = useI18n();
@@ -98,6 +101,12 @@ export function CalendarSyncCard({
       <p className={styles.usernameHint} style={{ marginTop: 0 }}>
         {t('account.calendarHint')}
       </p>
+
+      {!bookingOpen ? (
+        <p className={styles.usernameHint} style={{ marginTop: 0 }}>
+          {t('account.calendarNeedsBooking')}
+        </p>
+      ) : null}
 
       <label className={styles.fieldGroup}>
         <span className={styles.fieldLabel}>{t('account.calendarUrlLabel')}</span>

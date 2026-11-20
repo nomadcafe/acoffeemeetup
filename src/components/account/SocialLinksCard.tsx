@@ -227,7 +227,7 @@ export function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: 
           type="button"
           className={styles.saveButton}
           onClick={() => void handleSave()}
-          disabled={busy || hasInvalidLink}
+          disabled={busy || hasInvalidLink || socialKey(links, showLinks) === savedSocial}
         >
           {busy ? t('account.saving') : t('account.profileContentSave')}
         </button>

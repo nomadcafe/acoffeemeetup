@@ -488,10 +488,6 @@
   color: var(--ac-text-muted);
 }
 
-.signOutCard {
-  margin-top: 0.5rem;
-}
-
 .signOutButton {
   padding: 0.55rem 1rem;
   border: 1px solid #d1d5db;
@@ -1367,6 +1363,11 @@
  * cleanly on blur. */
 .featuredCafeSearch {
   position: relative;
+}
+
+.featuredCafeSearch input {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .featuredCafeSuggestions {

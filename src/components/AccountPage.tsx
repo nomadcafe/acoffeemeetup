@@ -632,6 +632,9 @@ function SignedInAccountPage({
           <AccountToc status={sectionStatus} unsaved={unsavedIds} />
           <div className={styles.content}>
 
+        {/* Summary only once there's something in it — a brand-new account
+            would otherwise open on a row of zeros above the username. */}
+        {stats.total > 0 || stats.shops > 0 ? (
         <section id="account-stats" className={styles.card} aria-label={t('account.statsTitle')}>
           <h2 className={styles.cardTitle}>{t('account.statsTitle')}</h2>
           <div className={styles.statsRow}>
@@ -649,6 +652,7 @@ function SignedInAccountPage({
             </a>
           </div>
         </section>
+        ) : null}
 
 
         <section id="account-username" className={styles.card} aria-label={t('account.usernameTitle')}>
@@ -692,7 +696,7 @@ function SignedInAccountPage({
               <button type="submit" className={styles.saveButton} disabled={!canSubmit}>
                 {save.kind === 'saving'
                   ? t('account.saving')
-                  : cleared
+                  : cleared && initialUsername
                     ? t('account.clearUsername')
                     : t('account.saveUsername')}
               </button>
@@ -794,6 +798,7 @@ function SignedInAccountPage({
           initialSyncedAt={msFromMaybe(sessionUser.busyCalendarSyncedAt)}
           initialLastError={sessionUser.busyCalendarLastError ?? null}
           initialLastErrorAt={msFromMaybe(sessionUser.busyCalendarLastErrorAt)}
+          bookingOpen={sectionStatus['account-booking'] === 'done'}
         />
 
 
@@ -816,7 +821,12 @@ function SignedInAccountPage({
           <p className={styles.dangerHint} style={{ color: 'var(--ac-text-muted)' }}>
             {t('account.exportHint')}
           </p>
-          <button type="button" className={styles.saveButton} onClick={handleExportAll}>
+          <button
+            type="button"
+            className={styles.saveButton}
+            onClick={handleExportAll}
+            style={{ alignSelf: 'flex-start' }}
+          >
             {t('account.exportButton')}
           </button>
           {exportError ? (
@@ -864,17 +874,21 @@ function SignedInAccountPage({
                       {s.ipAddress ? <> · {s.ipAddress}</> : null}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className={styles.sessionRevoke}
-                    onClick={() => void handleRevokeSession(s)}
-                    disabled={revokingId != null}
-                    aria-label={t('account.sessionsRevokeAria', { device: s.device })}
-                  >
-                    {revokingId === s.id
-                      ? t('account.sessionsRevoking')
-                      : t('account.sessionsRevoke')}
-                  </button>
+                  {/* The current device signs out with the button below the
+                      list, so its row doesn't repeat it. */}
+                  {s.current ? null : (
+                    <button
+                      type="button"
+                      className={styles.sessionRevoke}
+                      onClick={() => void handleRevokeSession(s)}
+                      disabled={revokingId != null}
+                      aria-label={t('account.sessionsRevokeAria', { device: s.device })}
+                    >
+                      {revokingId === s.id
+                        ? t('account.sessionsRevoking')
+                        : t('account.sessionsRevoke')}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -884,13 +898,13 @@ function SignedInAccountPage({
               {revokeError}
             </p>
           ) : null}
-        </section>
-
-        <section className={`${styles.card} ${styles.signOutCard}`}>
-          <h2 className={styles.cardTitle}>{t('account.session')}</h2>
-          <button type="button" className={styles.signOutButton} onClick={() => void handleSignOut()}>
-            {t('auth.signOut')}
-          </button>
+          {/* Sign out of this device — used to be a card of its own holding
+              just this button. */}
+          <div className={styles.formRow} style={{ marginTop: 'var(--ac-space-3)' }}>
+            <button type="button" className={styles.signOutButton} onClick={() => void handleSignOut()}>
+              {t('auth.signOut')}
+            </button>
+          </div>
         </section>
 
         <section

@@ -365,7 +365,7 @@ export function BookingSetupCard({
           type="button"
           className={styles.saveButton}
           onClick={() => void handleSave()}
-          disabled={busy || invalidDay !== undefined}
+          disabled={busy || invalidDay !== undefined || bookingKey(address, days) === savedBooking}
         >
           {busy ? t('account.saving') : t('account.bookingSave')}
         </button>

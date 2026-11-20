@@ -307,6 +307,8 @@ export function FeaturedCafesCard() {
           the cards lay out in a 2-column grid so 5 entries fit in 3 rows
           instead of 5; below the breakpoint they stack as before. */}
       <div className={styles.fieldGroup}>
+        {/* No empty grid box (and its gap) before the first café. */}
+        {cafes.length > 0 ? (
         <div className={styles.featuredCafeGrid}>
         {cafes.map((cafe, idx) => (
           <div key={cafe.placeId} className={styles.featuredCafeCard}>
@@ -494,6 +496,7 @@ export function FeaturedCafesCard() {
           </div>
         ))}
         </div>
+        ) : null}
 
         {/* Add surface — only visible when we're under the cap. Mirrors
             the v1 single-card empty-state UI: passport quick-pick row +
@@ -607,7 +610,7 @@ export function FeaturedCafesCard() {
           type="button"
           className={styles.saveButton}
           onClick={() => void handleSave()}
-          disabled={busy}
+          disabled={busy || cafesKey(cafes) === savedCafesKey}
         >
           {busy ? t('account.saving') : t('account.profileContentSave')}
         </button>

@@ -160,7 +160,7 @@ export function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfil
           type="button"
           className={styles.saveButton}
           onClick={() => void handleSave()}
-          disabled={busy || !!nameIssue || !!bioIssue}
+          disabled={busy || !!nameIssue || !!bioIssue || basicKey(displayName, bio) === savedBasic}
         >
           {busy ? t('account.saving') : t('account.profileContentSave')}
         </button>
