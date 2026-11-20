@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../context/I18nContext';
 import { track } from '../utils/analytics';
 import styles from './BookingWidget.module.css';
+import { TurnstileWidget, type TurnstileHandle } from './TurnstileWidget';
 
 // Server requires the slot be ≥1h in the future (anti-stampede + lets
 // the host see new bookings before they happen). Filter the same client-
@@ -102,6 +103,10 @@ export function BookingWidget({ username, displayName }: Props) {
   // Honeypot: hidden input bots fill but humans don't. Tracked in state so
   // we can include it in the payload — server rejects any non-empty value.
   const [website, setWebsite] = useState('');
+  // Turnstile: token is single-use, so it's reset after every submit.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileBroken, setTurnstileBroken] = useState(false);
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Abort + unmount guard: visitor can change `username` (parent
@@ -254,9 +259,12 @@ export function BookingWidget({ username, displayName }: Props) {
           scheduledAt: selectedSlotMs,
           durationMinutes: data.durationMinutes,
           website,
+          turnstileToken: turnstileToken ?? undefined,
         }),
         signal: ctrl.signal,
       });
+      // The token was spent on this request whatever the outcome.
+      turnstileRef.current?.reset();
       if (ctrl.signal.aborted || !mountedRef.current) return;
       const json = (await r.json().catch(() => ({}))) as Partial<BookingResponse> & {
         error?: string;
@@ -291,6 +299,11 @@ export function BookingWidget({ username, displayName }: Props) {
               km: json.distanceKm != null ? json.distanceKm : '',
             }),
           );
+          setState({ kind: 'picking' });
+          return;
+        }
+        if (json.code === 'turnstile_failed') {
+          setSubmitError(t('bookingWidget.turnstileFailed'));
           setState({ kind: 'picking' });
           return;
         }
@@ -615,6 +628,21 @@ export function BookingWidget({ username, displayName }: Props) {
               disabled={submitting}
             />
           </label>
+          <TurnstileWidget
+            ref={turnstileRef}
+            className={styles.turnstile}
+            language={locale === 'zh' ? 'zh-cn' : locale}
+            onToken={(tok) => {
+              setTurnstileToken(tok);
+              if (tok) setTurnstileBroken(false);
+            }}
+            onError={() => setTurnstileBroken(true)}
+          />
+          {turnstileBroken ? (
+            <p className={styles.turnstileError} role="alert">
+              {t('bookingWidget.turnstileError')}
+            </p>
+          ) : null}
           <div className={styles.formActions}>
             <button
               type="button"
@@ -627,7 +655,9 @@ export function BookingWidget({ username, displayName }: Props) {
             <button
               type="submit"
               className={styles.submit}
-              disabled={submitting || !visitorName.trim() || !visitorEmail.trim()}
+              disabled={
+                submitting || !visitorName.trim() || !visitorEmail.trim() || !turnstileToken
+              }
               aria-describedby={submitError ? 'booking-submit-error' : undefined}
             >
               {submitting ? t('bookingWidget.submitting') : t('bookingWidget.submit')}

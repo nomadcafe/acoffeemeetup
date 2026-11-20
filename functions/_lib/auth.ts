@@ -11,6 +11,9 @@ export interface AuthEnv extends DbEnv, SpendCapEnv {
   AUTH_BASE_URL: string;
   RESEND_API_KEY: string;
   RESEND_FROM_EMAIL: string;
+  /** Cloudflare Turnstile secret for the public booking form. When unset
+   *  (local dev) the check is skipped; set in production. */
+  TURNSTILE_SECRET_KEY?: string;
   /** Shared secret for the /api/cron/* endpoints. Set in CF dashboard. */
   CRON_SECRET?: string;
   /** Server-side Google Maps key — used for geocoding + Places searches

@@ -569,6 +569,8 @@ export const messages: MessageDict = {
   'bookingWidget.submit': '提交预约',
   'bookingWidget.submitting': '提交中…',
   'bookingWidget.submitFailed': '出错了，请重试。',
+  'bookingWidget.turnstileError': '人机验证没有加载出来。请对本站关闭广告/内容拦截，或刷新页面。',
+  'bookingWidget.turnstileFailed': '人机验证没有通过，请再试一次。',
   'bookingWidget.emailInvalid': '邮箱格式不太对，检查一下再提交。',
   'bookingWidget.bookingRef': '预订编号：{{id}}',
   'bookingWidget.errorTooFar': '这两个地址距离太远了（约 {{km}} 公里），不太适合见面喝咖啡。换一个离对方近一点的出发地试试 —— 咖啡见面适合双方都能轻松到达的范围。',

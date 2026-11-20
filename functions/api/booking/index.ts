@@ -5,7 +5,8 @@ import { sendEmail } from '../../_lib/sendEmail';
 import type { AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { bookingAttempts, bookings, user } from '../../_lib/db/schema';
-import { jsonError } from '../../_lib/jsonError';
+import { jsonError, jsonErrorCoded } from '../../_lib/jsonError';
+import { verifyTurnstile } from '../../_lib/turnstile';
 import {
   hasCollision,
   isSlotInAvailability,
@@ -67,6 +68,8 @@ const InputSchema = z.object({
    *  visit-note limit elsewhere in the app. Empty string treated as
    *  "no message" so we don't store dangling whitespace. */
   message: z.string().trim().max(500).optional(),
+  /** Cloudflare Turnstile token from the booking widget. */
+  turnstileToken: z.string().max(2048).optional(),
 });
 
 const COLLISION_WINDOW_MIN = 60;
@@ -79,6 +82,12 @@ const RATE_LIMIT_PER_HOUR = 5;
  *  from squatting every available slot under one person's identity, and
  *  prevents accidental double-booking when a user double-clicks submit. */
 const EMAIL_COOLDOWN_HOURS = 24;
+/** Per-host cap on new requests in a rolling 24h. Each request emails an
+ *  address the submitter typed in, so without a per-host ceiling one
+ *  profile could be used to send confirm emails to arbitrary inboxes from
+ *  our domain (rotating IPs defeat the per-IP limit). Far above any real
+ *  host's volume. */
+const HOST_DAILY_REQUEST_CAP = 20;
 
 /** Statuses that hold a slot — i.e. a new request can't collide with
  *  any of these. `rejected` and `cancelled` free the slot back up.
@@ -116,6 +125,19 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
   } catch (err) {
     return jsonError(err instanceof Error ? err.message : 'Invalid request body', 400);
   }
+  // Bot check before any DB work. Skipped only when the secret isn't
+  // configured (local dev) — production always has it.
+  if (env.TURNSTILE_SECRET_KEY) {
+    const human = await verifyTurnstile(
+      env.TURNSTILE_SECRET_KEY,
+      input.turnstileToken,
+      request.headers.get('cf-connecting-ip'),
+    );
+    if (!human) {
+      return jsonErrorCoded("Couldn't verify you're human — please try again.", 'turnstile_failed', 403);
+    }
+  }
+
   const username = input.username.toLowerCase();
   const slotMs = input.scheduledAt;
   const duration = input.durationMinutes;
@@ -162,6 +184,18 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
   const tz = organizer.timezone || 'UTC';
   if (!isSlotInAvailability(slotMs, duration, availability, tz)) {
     return jsonError("That slot is outside the host's available hours", 400);
+  }
+
+  // Per-host daily cap — counts every request created in the last 24h,
+  // including unconfirmed ones (each of those already sent an email).
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60_000);
+  const [{ n: hostRecent = 0 } = { n: 0 }] = await db
+    .select({ n: sql<number>`count(*)`.mapWith(Number) })
+    .from(bookings)
+    .where(and(eq(bookings.organizerUserId, organizer.id), gte(bookings.createdAt, dayAgo)));
+  if (hostRecent >= HOST_DAILY_REQUEST_CAP) {
+    console.warn('[booking] host daily cap hit', { organizerId: organizer.id, hostRecent });
+    return jsonError('This host has too many pending requests right now. Try again tomorrow.', 429);
   }
 
   // Per-email cooldown — counts active statuses including `requested`
@@ -245,7 +279,12 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
   // visitor clicks. Same shape as the legacy auto-confirm flow's
   // confirm-link, just routed to /api/booking/confirm-public which
   // now flips into 'requested' (not 'pending').
-  const handle = organizer.displayName?.trim() || `@${organizer.username ?? 'host'}`;
+  /* This email goes to an address an anonymous submitter typed in, so it
+   * must not carry free text either side controls — a host's display name
+   * or a visitor's "name" could otherwise be spam / a phishing URL sent
+   * from our domain to a stranger. The @username slug is regex-limited
+   * to [a-z0-9_-], so it can't hold a link. */
+  const handle = `@${organizer.username ?? username}`;
   if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
     /* Confirm link expires 7 days after issuance, OR at the slot itself
      * if that's sooner — past-slot clicks are already 410'd in
@@ -289,7 +328,6 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
         subject: `Confirm your coffee request to ${handle} ☕`,
         html: renderVisitorConfirmRequestHtml({
           hostHandle: handle,
-          visitorName: input.visitorName,
           startStr,
           confirmUrl,
         }),

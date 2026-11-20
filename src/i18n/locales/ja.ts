@@ -574,6 +574,8 @@ export const messages: MessageDict = {
   'bookingWidget.submit': '予約する',
   'bookingWidget.submitting': '予約中…',
   'bookingWidget.submitFailed': 'エラーが発生しました。もう一度お試しください。',
+  'bookingWidget.turnstileError': '人間確認を読み込めませんでした。このサイトでコンテンツブロッカーをオフにするか、ページを再読み込みしてください。',
+  'bookingWidget.turnstileFailed': '人間確認に失敗しました。もう一度お試しください。',
   'bookingWidget.emailInvalid': 'メールアドレスの形式を確認してください。',
   'bookingWidget.bookingRef': '予約番号：{{id}}',
   'bookingWidget.errorTooFar': '2 つの住所は約 {{km}} km 離れていて、対面コーヒーには遠すぎます。お互いに行きやすい場所同士の住所で試してみてください。',

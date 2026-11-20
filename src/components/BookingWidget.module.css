@@ -475,3 +475,15 @@
   height: 1px;
   overflow: hidden;
 }
+
+/* Turnstile renders nothing for most visitors (interaction-only); when a
+   challenge is needed it inserts a ~300x65 iframe here. */
+.turnstile:not(:empty) {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.turnstileError {
+  margin: 0 0 0.75rem;
+  color: var(--ac-danger, #b3261e);
+  font-size: 0.85rem;
+}

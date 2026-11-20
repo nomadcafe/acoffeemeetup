@@ -589,6 +589,8 @@ export const messages: MessageDict = {
   'bookingWidget.submit': 'Book it',
   'bookingWidget.submitting': 'Booking…',
   'bookingWidget.submitFailed': 'Something went wrong. Please try again.',
+  'bookingWidget.turnstileError': "Couldn't load the quick human check. Turn off content blockers for this site or refresh the page.",
+  'bookingWidget.turnstileFailed': "We couldn't verify you're human — please try again.",
   'bookingWidget.slotTaken': 'Sorry, that time was just booked by someone else. Pick another below.',
   'bookingWidget.emailInvalid': "That email looks off — double-check the address and try again.",
   'bookingWidget.bookingRef': 'Booking ref: {{id}}',

@@ -89,8 +89,8 @@ function whereCard(
 // ---------- email verification (gate before host notification) ----------
 
 export interface ConfirmRequestParams {
+  /** `@username` only — never the free-text display name (see caller). */
   hostHandle: string;
-  visitorName: string;
   startStr: string;
   /** Single-use HMAC link the visitor clicks to confirm. */
   confirmUrl: string;
@@ -111,7 +111,7 @@ export function renderVisitorConfirmRequestHtml(p: ConfirmRequestParams): string
     <h1 style="margin:0 0 4px;font-size:22px;color:#2c1810;">Confirm your coffee request ☕</h1>
     <p style="margin:0;color:#7a6a60;font-size:14px;">${escape(p.startStr)}</p>
     <p style="margin:24px 0 14px;color:#5c4030;font-size:14px;line-height:1.5;">
-      Hi ${escape(p.visitorName)} — click below to send this request to
+      Click below to send this request to
       ${escape(p.hostHandle)}. They won't see it until you confirm. Once you
       do, ${escape(p.hostHandle)} will reply with a yes (and pick the café)
       or suggest a different time.
