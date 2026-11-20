@@ -35,7 +35,7 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env, wai
 
   const db = getDb(env);
   const [before] = await db
-    .select({ username: user.username })
+    .select({ username: user.username, profilePublic: user.profilePublic })
     .from(user)
     .where(eq(user.id, sessionUser.id));
   if (value != null) {
@@ -80,8 +80,10 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env, wai
       .where(eq(user.id, sessionUser.id));
   }
 
-  // Every new or changed handle goes to the admin for review.
-  if (value != null && value !== (before?.username ?? null)) {
+  // A new / changed handle on a public profile is a new public URL — notify
+  // the admin. (A handle on a private profile isn't visible to anyone yet;
+  // the notification comes when the profile is made public.)
+  if (value != null && value !== (before?.username ?? null) && before?.profilePublic) {
     waitUntil(notifyProfileReview(env, db, request, waitUntil, sessionUser.id, ['handle']));
   }
 

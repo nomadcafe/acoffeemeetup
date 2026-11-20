@@ -10,15 +10,15 @@ import { normalizeSocialLinks, resolveSocialLink } from '../../src/utils/socialP
 
 /**
  * Post-publication review ("publish first, review after"). Profiles go live
- * immediately; the admin (ADMIN_EMAIL) gets an email whenever a handle is
- * set or changed, a profile is made public, or a public profile's text /
- * links change. The email links to a confirmation page where one click
- * takes the profile down (see /api/admin/profile).
+ * immediately; the admin (ADMIN_EMAIL) gets an email when a profile becomes
+ * publicly visible — made public, or its handle set / changed while public.
+ * The email links to a confirmation page where one click takes the profile
+ * down (see /api/admin/profile).
  */
 
 type Db = ReturnType<typeof getDb>;
 
-export type ReviewChange = 'handle' | 'published' | 'displayName' | 'bio' | 'socialLinks';
+export type ReviewChange = 'handle' | 'published';
 
 /** Review links stay valid for 30 days. */
 const ADMIN_LINK_TTL_MS = 30 * 24 * 60 * 60_000;
@@ -53,11 +53,8 @@ const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 const CHANGE_LABEL: Record<ReviewChange, string> = {
-  handle: 'handle set / changed',
+  handle: 'handle changed on a public profile',
   published: 'profile made public',
-  displayName: 'display name changed',
-  bio: 'bio changed',
-  socialLinks: 'social links changed',
 };
 
 export interface ReviewSnapshot {

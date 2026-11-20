@@ -11,7 +11,7 @@ import { getDb } from '../../_lib/db';
 import { user, featuredCafes } from '../../_lib/db/schema';
 import { getSessionUser, jsonError, jsonErrorCoded } from '../../_lib/passport';
 import { cleanProfileText, profileTextIssue } from '../../../src/utils/profileText';
-import { notifyProfileReview, type ReviewChange } from '../../_lib/profileReview';
+import { notifyProfileReview } from '../../_lib/profileReview';
 import {
   GoogleMapsError,
   fetchPlaceWebsiteUri,
@@ -266,16 +266,13 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env, wai
   }
 
   const db = getDb(env);
-  // Current public-facing state: needed for the publish gate, the
-  // suspension gate, and to tell the admin what actually changed.
+  // Current state: needed for the publish gate, the suspension gate, and
+  // to notify the admin only on the private → public transition.
   const [before] = await db
     .select({
       username: user.username,
       profilePublic: user.profilePublic,
       profileSuspendedAt: user.profileSuspendedAt,
-      displayName: user.displayName,
-      bio: user.bio,
-      socialLinks: user.socialLinks,
     })
     .from(user)
     .where(eq(user.id, sessionUser.id));
@@ -432,22 +429,10 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env, wai
     await db.batch(statements as [BatchStmt, ...BatchStmt[]]);
   }
 
-  // Post-publication review: tell the admin when a profile goes public, or
-  // when a public profile's visible text / links change.
-  if (before) {
-    const nowPublic = (patch.profilePublic as boolean | undefined) ?? before.profilePublic;
-    const changes: ReviewChange[] = [];
-    if (nowPublic && !before.profilePublic) changes.push('published');
-    if (nowPublic && before.profilePublic) {
-      if ('displayName' in patch && patch.displayName !== before.displayName) changes.push('displayName');
-      if ('bio' in patch && patch.bio !== before.bio) changes.push('bio');
-      if ('socialLinks' in patch && patch.socialLinks !== (before.socialLinks ?? '[]')) {
-        changes.push('socialLinks');
-      }
-    }
-    if (changes.length > 0) {
-      waitUntil(notifyProfileReview(env, db, request, waitUntil, sessionUser.id, changes));
-    }
+  // Post-publication review: tell the admin when a profile goes public.
+  // (Edits to an already-public profile don't notify.)
+  if (before && patch.profilePublic === true && !before.profilePublic) {
+    waitUntil(notifyProfileReview(env, db, request, waitUntil, sessionUser.id, ['published']));
   }
 
   return Response.json({ ok: true });
