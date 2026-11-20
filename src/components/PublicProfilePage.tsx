@@ -190,16 +190,20 @@ export function PublicProfilePage({ username }: Props) {
 function ProfileSkeleton() {
   return (
     <>
-      <div className={styles.heroCard}>
-        <div className={styles.avatar} aria-hidden style={{ background: '#d6cdc1' }} />
-        <div className={`${styles.skeleton} ${styles.skeletonMed}`} />
+      <div className={styles.masthead}>
+        <div className={styles.mastheadRule} aria-hidden />
         <div className={`${styles.skeleton} ${styles.skeletonShort}`} />
+        <div className={styles.mastheadMain}>
+          <div className={styles.mastheadText}>
+            <div className={`${styles.skeleton} ${styles.skeletonMed}`} style={{ height: '3rem' }} />
+          </div>
+          <div className={`${styles.portrait} ${styles.skeleton}`} aria-hidden />
+        </div>
       </div>
-      <div className={styles.statsCard}>
+      <div className={styles.statsRow}>
         {[0, 1, 2].map((i) => (
-          <div key={i} className={styles.statCell}>
-            <div className={styles.skeleton} />
-            <div className={`${styles.skeleton} ${styles.skeletonShort}`} style={{ marginTop: '0.4rem', marginInline: 'auto' }} />
+          <div key={i} className={styles.stat}>
+            <div className={styles.skeleton} style={{ height: '2.4rem' }} />
           </div>
         ))}
       </div>
@@ -214,48 +218,59 @@ function ProfileBody({ profile }: { profile: PublicProfile }) {
 
   return (
     <>
-      <section className={styles.heroCard} aria-label={t('profile.heroAria')}>
-        {profile.image ? (
-          // Real avatar (Google OAuth gave us one, or the user uploaded
-          // via /api/account/avatar). We render via <img> so browsers
-          // get cache headers; the gradient is a fallback only.
-          <img
-            className={styles.avatarImage}
-            src={profile.image}
-            alt=""
-            referrerPolicy="no-referrer"
-            loading="eager"
-            width={96}
-            height={96}
-          />
-        ) : (
-          <div
-            className={styles.avatar}
-            aria-hidden
-            style={{ background: avatarGradient(profile.username) }}
-          >
-            {initialChar}
+      {/* Masthead: editorial, left-aligned. Kicker line, large serif name,
+          avatar alongside on wide screens, bio as a pull quote. The theme
+          shows as a thin accent rule rather than a banner. */}
+      <header className={styles.masthead} aria-label={t('profile.heroAria')}>
+        <div className={styles.mastheadRule} aria-hidden />
+        <p className={styles.kicker}>
+          <span>ACoffee</span>
+          <span aria-hidden className={styles.kickerDot}>·</span>
+          <span>
+            {t('profile.memberSince', { date: formatAbsoluteDate(profile.memberSince, locale) })}
+          </span>
+        </p>
+        <div className={styles.mastheadMain}>
+          <div className={styles.mastheadText}>
+            {/* Page H1 is always the visitor-readable identifier — the
+                display name when set, otherwise @username. */}
+            <h1 className={styles.displayName}>
+              {profile.displayName ?? (
+                <>
+                  <span className={styles.handleAt}>@</span>
+                  {profile.username}
+                </>
+              )}
+            </h1>
+            {profile.displayName ? (
+              <p className={styles.handleLine}>@{profile.username}</p>
+            ) : null}
           </div>
-        )}
-        {/* Page H1 is always the visitor-readable identifier — the
-            display name when set, otherwise @username — so SEO + AT
-            users get a consistent heading regardless of whether the
-            host filled in a display name. */}
-        {profile.displayName ? (
-          <>
-            <h1 className={styles.handle}>{profile.displayName}</h1>
-            <p className={styles.handleSecondary}>
-              <span className={styles.handleAt}>@</span>
-              {profile.username}
-            </p>
-          </>
-        ) : (
-          <h1 className={styles.handle}>
-            <span className={styles.handleAt}>@</span>
-            {profile.username}
-          </h1>
-        )}
-        {profile.bio ? <p className={styles.bio}>{profile.bio}</p> : null}
+          {profile.image ? (
+            <img
+              className={styles.portrait}
+              src={profile.image}
+              alt=""
+              referrerPolicy="no-referrer"
+              loading="eager"
+              width={160}
+              height={160}
+            />
+          ) : (
+            <div
+              className={`${styles.portrait} ${styles.portraitInitial}`}
+              aria-hidden
+              style={{ background: avatarGradient(profile.username) }}
+            >
+              {initialChar}
+            </div>
+          )}
+        </div>
+        {profile.bio ? (
+          <blockquote className={styles.pullQuote}>
+            <p>{profile.bio}</p>
+          </blockquote>
+        ) : null}
         {safeSocialLinks.length > 0 ? (
           <ul className={styles.socialLinkList}>
             {safeSocialLinks.map((l) => (
@@ -274,28 +289,20 @@ function ProfileBody({ profile }: { profile: PublicProfile }) {
             ))}
           </ul>
         ) : null}
-        <p className={styles.memberSince}>
-          {t('profile.memberSince', { date: formatAbsoluteDate(profile.memberSince, locale) })}
-        </p>
-      </section>
+      </header>
 
-      {/* Stats sit right under the hero — they're identity, not
-          afterthought data. "47 cups across 12 cafés with a 12-day
-          streak" is what tells a visitor "this is a real coffee
-          person" *before* they evaluate whether to book a meeting. */}
-      <section className={styles.statsCard} aria-label={t('account.statsTitle')}>
-        <div className={styles.statCell}>
-          <div className={styles.statIcon} aria-hidden>☕</div>
+      {/* Stats as typography: big serif numerals, small-caps labels,
+          hairline dividers — identity, read before the booking form. */}
+      <section className={styles.statsRow} aria-label={t('account.statsTitle')}>
+        <div className={styles.stat}>
           <div className={styles.statValue}>{profile.cups}</div>
           <div className={styles.statLabel}>{t('passport.statVisits')}</div>
         </div>
-        <div className={styles.statCell}>
-          <div className={styles.statIcon} aria-hidden>🏪</div>
+        <div className={styles.stat}>
           <div className={styles.statValue}>{profile.shops}</div>
           <div className={styles.statLabel}>{t('passport.statShops')}</div>
         </div>
-        <div className={styles.statCell}>
-          <div className={styles.statIcon} aria-hidden>🔥</div>
+        <div className={styles.stat}>
           <div className={styles.statValue}>{profile.streak}</div>
           <div className={styles.statLabel}>{t('passport.statStreak')}</div>
         </div>

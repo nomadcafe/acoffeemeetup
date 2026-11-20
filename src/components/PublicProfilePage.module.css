@@ -62,36 +62,6 @@
     font-size: 1.7rem;
   }
 
-  /* Hero card scales up on desktop — avatar gets bigger, name reads
-   * as a real H1, padding gives the card room to breathe instead of
-   * looking like a stretched mobile card. */
-  .heroCard {
-    padding: 2.5rem 1.75rem 2rem;
-    gap: 0.85rem;
-  }
-
-  .avatar,
-  .avatarImage {
-    width: 128px;
-    height: 128px;
-  }
-
-  .avatar {
-    font-size: 3.4rem;
-  }
-
-  .handle {
-    font-size: 2.6rem;
-  }
-
-  .handleSecondary {
-    font-size: 1.05rem;
-  }
-
-  .bio {
-    font-size: 1.05rem;
-  }
-
   /* Featured cafés in two columns when there's room — single column
    * at narrow widths leaves a lot of horizontal whitespace on desktop
    * and forces a tall scroll. */
@@ -101,99 +71,79 @@
 }
 
 .main {
-  max-width: 720px;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 1.5rem 1rem calc(1.5rem + var(--bottom-nav-safe));
+  padding: 2rem 1.25rem calc(2rem + var(--bottom-nav-safe));
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 2.5rem;
+  /* "01 / 02 / 03" numbering on section heads, including the booking
+     widget's own heading (BookingWidget.module.css .title). */
+  counter-reset: ac-section;
 }
 
-.heroCard {
-  /* Soft warm gradient pinned to the brand surface tones — no raw hex
-   * literals so the surface follows future palette tweaks. The two
-   * stops are very close in luminance so the gradient reads as "warm
-   * card" rather than "loud banner". */
-  background:
-    linear-gradient(135deg, var(--ac-surface-tinted) 0%, var(--ac-page-bg) 100%);
-  border: 1px solid var(--ac-border);
-  border-radius: var(--ac-radius-lg);
-  /* Top padding leaves room for the theme band; the avatar overlaps it. */
-  padding: 2.6rem 1.4rem 1.6rem;
-  position: relative;
-  overflow: hidden;
+@media (min-width: 768px) {
+  .main {
+    padding: 3.5rem 2rem calc(3rem + var(--bottom-nav-safe));
+    gap: 3.5rem;
+  }
+}
+
+/* ================= Editorial masthead ================= */
+
+.masthead {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.7rem;
-  text-align: center;
-  box-shadow: var(--ac-shadow-card);
+  gap: 1.1rem;
+  color: var(--ac-text);
 }
 
-/* Theme band: the strongest visual signal of the chosen theme. */
-.heroCard::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 5.25rem;
+/* The theme, as a magazine accent rule rather than a banner. */
+.mastheadRule {
+  height: 6px;
+  width: 4.5rem;
+  border-radius: 999px;
   background: var(--ac-theme-band);
 }
 
-/* Everything in the hero sits above the band. */
-.heroCard > * {
-  position: relative;
-}
-
-.avatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  /* Background is set inline via avatarGradient(username) — leaves a flat
-     fallback for the loading skeleton that overrides this rule. */
-  background: var(--ac-accent);
-  color: #fff;
-  font-family: var(--ac-font-display);
-  font-size: 2.6rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  font-variation-settings: 'opsz' 96;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--ac-shadow-card);
-  /* Subtle drop so the initial stays legible across the lighter half of
-     any hue-randomized gradient. */
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
-}
-
-/* Real-image variant. Same footprint as the gradient avatar so the rest
-   of the hero layout doesn't shift when an image loads or fails. */
-.avatarImage {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: var(--ac-shadow-card);
-  background: var(--ac-surface-tinted);
-}
-
-.handle {
-  margin: 0.2rem 0 0;
-  font-family: var(--ac-font-display);
-  font-size: 1.95rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  font-variation-settings: 'opsz' 96;
-  color: var(--ac-text);
-  line-height: 1.05;
-}
-
-.handleSecondary {
+.kicker {
   margin: 0;
-  font-size: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--ac-text-muted);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
+}
+
+.kickerDot {
+  color: var(--ac-accent);
+}
+
+.mastheadMain {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.mastheadText {
+  min-width: 0;
+  flex: 1;
+}
+
+.displayName {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: 600;
+  font-size: clamp(2.6rem, 9vw, 4.75rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  font-variation-settings: 'opsz' 144;
+  overflow-wrap: anywhere;
 }
 
 .handleAt {
@@ -201,51 +151,86 @@
   font-weight: 500;
 }
 
-/* Bio reads as a personal blurb — italic + reading-width cap +
- * slightly muted vs the H1 so the eye lands on the name first. */
-.bio {
-  margin: 0.5rem 0 0;
-  font-size: 1rem;
-  line-height: 1.55;
+.handleLine {
+  margin: 0.7rem 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  color: var(--ac-text-muted);
+}
+
+.portrait {
+  flex: none;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--ac-surface-tinted);
+  /* Hairline ring + offset keeps the portrait crisp on any theme. */
+  box-shadow: 0 0 0 1px var(--ac-border), 0 0 0 6px var(--ac-page-bg), 0 0 0 7px var(--ac-border);
+}
+
+.portraitInitial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--ac-font-display);
+  font-size: 2.8rem;
+  font-weight: 600;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
+}
+
+/* Bio as a pull quote: serif italic, accent rule on the left. */
+.pullQuote {
+  margin: 0.4rem 0 0;
+  padding: 0.1rem 0 0.1rem 1.1rem;
+  border-left: 2px solid var(--ac-accent);
+  max-width: 36rem;
+}
+
+.pullQuote p {
+  margin: 0;
+  font-family: var(--ac-font-display);
   font-style: italic;
+  font-weight: 400;
+  font-size: 1.25rem;
+  line-height: 1.45;
   color: var(--ac-text);
-  max-width: 30rem;
+  font-variation-settings: 'opsz' 36;
 }
 
 .socialLinkList {
   list-style: none;
-  margin: 0.6rem 0 0;
+  margin: 0.3rem 0 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: center;
+  gap: 0.3rem 1.25rem;
 }
 
+/* Text links with icons — quiet, like a byline, not chips. */
 .socialLink {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.35rem 0.85rem 0.35rem 0.7rem;
-  background: var(--ac-surface);
-  border: 1px solid var(--ac-border);
-  border-radius: var(--ac-radius-pill);
+  padding: 0.2rem 0;
   color: var(--ac-text);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 500;
   text-decoration: none;
-  transition: background var(--ac-motion-fast), border-color var(--ac-motion-fast);
+  border-bottom: 1px solid var(--ac-border-strong);
+  transition: border-color var(--ac-motion-fast), color var(--ac-motion-fast);
 }
 
 .socialLink:hover {
-  background: var(--ac-surface-tinted);
   border-color: var(--ac-accent);
+  color: var(--ac-accent);
 }
 
 .socialLink:focus-visible {
   outline: none;
   box-shadow: var(--ac-focus-ring);
-  border-color: var(--ac-accent);
 }
 
 .socialLinkIcon {
@@ -254,82 +239,103 @@
 }
 
 .socialLink:hover .socialLinkIcon {
-  color: var(--ac-text);
+  color: currentColor;
 }
 
-.memberSince {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--ac-text-muted);
+@media (min-width: 640px) {
+  .mastheadMain {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .portrait {
+    width: 152px;
+    height: 152px;
+  }
+
+  .portraitInitial {
+    font-size: 4rem;
+  }
+
+  .pullQuote p {
+    font-size: 1.45rem;
+  }
 }
 
-.statsCard {
-  background: var(--ac-surface);
-  border: 1px solid var(--ac-border);
-  border-radius: var(--ac-radius-md);
-  padding: 1.1rem 0.75rem 1rem;
+/* ================= Stats as typography ================= */
+
+.statsRow {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.4rem;
+  border-top: 1px solid var(--ac-text);
+  border-bottom: 1px solid var(--ac-border);
 }
 
-.statCell {
-  text-align: center;
-  padding: 0.4rem 0.25rem;
+.stat {
+  padding: 1.1rem 0.9rem 1.2rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
-/* Icon pill above each stat number. Subtle warm-tinted disc keeps the
-   row from feeling like three bare integers; matches the warm palette
-   the rest of the public profile uses. */
-.statIcon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--ac-highlight-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  line-height: 1;
+.stat + .stat {
+  border-left: 1px solid var(--ac-border);
 }
 
 .statValue {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--ac-text);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--ac-font-display);
+  font-size: clamp(2.2rem, 7vw, 3.4rem);
+  font-weight: 500;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  color: var(--ac-text);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-variation-settings: 'opsz' 144;
 }
 
 .statLabel {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--ac-text-muted);
 }
 
+/* ================= Sections ================= */
+
+/* Unboxed: a hairline, a numbered head, whitespace. */
 .section {
-  background: var(--ac-surface);
-  border: 1px solid var(--ac-border);
-  border-radius: 12px;
-  padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 1.1rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--ac-border);
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ac-text-muted);
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-family: var(--ac-font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--ac-text);
+  font-variation-settings: 'opsz' 72;
+}
+
+.sectionTitle::before {
+  counter-increment: ac-section;
+  content: counter(ac-section, decimal-leading-zero);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--ac-accent);
 }
 
 .shopList {
@@ -338,7 +344,10 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+}
+
+.shopList > li + li {
+  border-top: 1px solid var(--ac-border);
 }
 
 /* Whole row is a link to the cafe in Google Maps. Border + soft hover
@@ -347,19 +356,15 @@
 .shopRow {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.6rem 0.75rem;
-  background: var(--ac-page-bg);
-  border: 1px solid transparent;
-  border-radius: var(--ac-radius-sm);
+  gap: 0.9rem;
+  padding: 0.85rem 0.25rem;
   text-decoration: none;
   color: inherit;
-  transition: background var(--ac-motion-fast), border-color var(--ac-motion-fast);
+  transition: background var(--ac-motion-fast);
 }
 .shopRow:hover,
 .shopRow:focus-visible {
-  background: var(--ac-surface);
-  border-color: var(--ac-border);
+  background: var(--ac-surface-tinted);
 }
 
 /* Place photo thumbnail. The colored gradient on the parent span is the
@@ -387,17 +392,15 @@
    the visible <ol> numerals the browser would normally render. */
 .shopRank {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--ac-highlight-bg);
-  color: var(--ac-highlight-text);
-  font-size: 0.85rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-variant-numeric: tabular-nums;
+  order: -1;
+  width: 2.2rem;
+  font-family: var(--ac-font-display);
+  font-size: 1.6rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ac-text-muted);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-variation-settings: 'opsz' 72;
 }
 
 /* Stack name + city vertically in the middle column. The flex:1 +
@@ -411,8 +414,10 @@
 }
 
 .shopName {
-  font-size: 0.95rem;
+  font-family: var(--ac-font-display);
+  font-size: 1.1rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--ac-text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -527,21 +532,19 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.75rem;
+  gap: 1.5rem 2rem;
 }
 
 .featuredCafeCard {
-  background: var(--ac-surface);
-  border: 1px solid var(--ac-border);
-  border-radius: var(--ac-radius-md);
-  padding: 0.85rem 1rem;
+  /* Editorial entry: a heavy top rule instead of a box. */
+  padding: 0.9rem 0 0;
+  border-top: 2px solid var(--ac-text);
 }
 
 /* Owned cards get a slightly warmer accent — implies "this is a
    business surface" rather than "this is a recommendation." */
 .featuredCafeCardOwned {
-  border-color: var(--ac-highlight-border);
-  background: var(--ac-surface-tinted);
+  border-top-color: var(--ac-accent);
 }
 
 .featuredCafeHead {
@@ -553,8 +556,11 @@
 }
 
 .featuredCafeName {
+  font-family: var(--ac-font-display);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.3rem;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
   color: var(--ac-text);
   text-decoration: none;
 }
@@ -568,10 +574,11 @@
 }
 
 .featuredCafeRelationTag {
-  font-size: 0.72rem;
-  color: var(--ac-text-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--ac-accent);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.14em;
   white-space: nowrap;
 }
 
