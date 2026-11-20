@@ -456,6 +456,7 @@ export const messages: MessageDict = {
   'account.tocProgressAria': '已完成 {{done}}/{{total}}',
   'account.tocDone': '已设置',
   'account.tocTodo': '尚未设置',
+  'account.tocUnsaved': '未保存',
   'account.tocTodoCount': '还有 {{count}} 项未设置',
   'account.copyLink': '复制链接',
   'account.linkCopied': '已复制',

@@ -194,6 +194,25 @@
   background: var(--ac-accent);
 }
 
+/* Unsaved edits — takes precedence over the setup mark. */
+.tocUnsaved {
+  flex: none;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tocChipUnsaved {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d97706;
+}
+
 /* Mobile / tablet: the side rail is hidden below 1024px, so show a sticky
    row of group chips under the header instead of no navigation at all. */
 .tocMobile {

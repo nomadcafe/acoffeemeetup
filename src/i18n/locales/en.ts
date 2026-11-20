@@ -474,6 +474,7 @@ export const messages: MessageDict = {
   'account.tocProgressAria': '{{done}} of {{total}} set up',
   'account.tocDone': 'Set up',
   'account.tocTodo': 'Not set up yet',
+  'account.tocUnsaved': 'Unsaved',
   'account.tocTodoCount': '{{count}} left to set up',
   'account.copyLink': 'Copy link',
   'account.linkCopied': 'Copied!',

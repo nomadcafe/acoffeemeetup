@@ -460,6 +460,7 @@ export const messages: MessageDict = {
   'account.tocProgressAria': '{{total}} 件中 {{done}} 件設定済み',
   'account.tocDone': '設定済み',
   'account.tocTodo': '未設定',
+  'account.tocUnsaved': '未保存',
   'account.tocTodoCount': '未設定 {{count}} 件',
   'account.copyLink': 'リンクをコピー',
   'account.linkCopied': 'コピーしました',

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   SOCIAL_LINKS_MAX,
   SOCIAL_PLATFORMS,
@@ -40,6 +40,34 @@ type StatusBanner = { kind: 'ok' | 'err'; message: string } | null;
 const AccountRefreshContext = createContext<() => void>(() => {});
 function useAccountRefresh(): () => void {
   return useContext(AccountRefreshContext);
+}
+
+/** Cards report whether they hold edits that differ from what's saved. The
+ *  page uses it to mark sections "unsaved" in the sidebar and to warn
+ *  before leaving with unsaved edits. */
+/**
+ * Serialized "what the server has" for a card. Follows the props (the
+ * session) when they change, and can be set directly on a successful save
+ * so the card reads clean immediately instead of flashing "unsaved" until
+ * the session refetch lands.
+ */
+function useSavedSnapshot(fromProps: string): [string, (key: string) => void] {
+  const [saved, setSaved] = useState(fromProps);
+  const [seenProps, setSeenProps] = useState(fromProps);
+  if (fromProps !== seenProps) {
+    setSeenProps(fromProps);
+    setSaved(fromProps);
+  }
+  return [saved, setSaved];
+}
+
+const DirtyContext = createContext<(sectionId: string, dirty: boolean) => void>(() => {});
+function useReportDirty(sectionId: string, dirty: boolean): void {
+  const report = useContext(DirtyContext);
+  useEffect(() => {
+    report(sectionId, dirty);
+  }, [report, sectionId, dirty]);
+  useEffect(() => () => report(sectionId, false), [report, sectionId]);
 }
 
 /**
@@ -570,6 +598,40 @@ function SignedInAccountPage({
         : 'todo',
   };
 
+  // Sections with unsaved edits, reported by the cards via DirtyContext.
+  const [dirtyIds, setDirtyIds] = useState<ReadonlySet<string>>(() => new Set());
+  const reportDirty = useCallback((id: string, dirty: boolean) => {
+    setDirtyIds((prev) => {
+      if (prev.has(id) === dirty) return prev;
+      const next = new Set(prev);
+      if (dirty) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  // The username card's state lives in this component, so it's folded in
+  // here rather than reported through the context.
+  const usernameDirty =
+    save.kind !== 'saving' && draft.trim().toLowerCase() !== (effectiveUsername ?? '');
+  const unsavedIds = useMemo(() => {
+    const all = new Set(dirtyIds);
+    if (usernameDirty) all.add('account-username');
+    return all;
+  }, [dirtyIds, usernameDirty]);
+  const hasUnsaved = unsavedIds.size > 0;
+
+  // Leaving the page (reload, close, or any full navigation — the header
+  // links are plain anchors) with unsaved edits asks first.
+  useEffect(() => {
+    if (!hasUnsaved) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasUnsaved]);
+
   const [linkCopied, setLinkCopied] = useState(false);
   async function copyProfileLink() {
     if (!effectiveUsername) return;
@@ -584,6 +646,7 @@ function SignedInAccountPage({
 
   return (
     <AccountRefreshContext.Provider value={onRefetchSession}>
+    <DirtyContext.Provider value={reportDirty}>
     <div className={styles.app}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
@@ -611,7 +674,7 @@ function SignedInAccountPage({
         </div>
 
         <div className={styles.layout}>
-          <AccountToc status={sectionStatus} />
+          <AccountToc status={sectionStatus} unsaved={unsavedIds} />
           <div className={styles.content}>
 
         <section id="account-stats" className={styles.card} aria-label={t('account.statsTitle')}>
@@ -900,6 +963,7 @@ function SignedInAccountPage({
         />
       ) : null}
     </div>
+    </DirtyContext.Provider>
     </AccountRefreshContext.Provider>
   );
 }
@@ -1179,7 +1243,13 @@ function groupProgress(g: TocGroup, status: SectionStatusMap) {
  * Below that: a sticky row of group chips — mobile used to get no
  * navigation at all and had to scroll through every card.
  */
-function AccountToc({ status }: { status: SectionStatusMap }) {
+function AccountToc({
+  status,
+  unsaved,
+}: {
+  status: SectionStatusMap;
+  unsaved: ReadonlySet<string>;
+}) {
   const { t } = useI18n();
   const activeId = useScrollSpy(TOC_IDS);
   const activeGroup = TOC_GROUPS.find((g) => g.items.some((i) => i.id === activeId))?.key;
@@ -1219,7 +1289,9 @@ function AccountToc({ status }: { status: SectionStatusMap }) {
                         }}
                       >
                         <span>{t(s.labelKey)}</span>
-                        {st === 'done' ? (
+                        {unsaved.has(s.id) ? (
+                          <span className={styles.tocUnsaved}>{t('account.tocUnsaved')}</span>
+                        ) : st === 'done' ? (
                           <span className={styles.tocCheck} aria-label={t('account.tocDone')}>
                             ✓
                           </span>
@@ -1239,6 +1311,7 @@ function AccountToc({ status }: { status: SectionStatusMap }) {
         {TOC_GROUPS.map((g) => {
           const { done, total } = groupProgress(g, status);
           const todo = total - done;
+          const groupUnsaved = g.items.some((i) => unsaved.has(i.id));
           return (
             <a
               key={g.key}
@@ -1252,6 +1325,9 @@ function AccountToc({ status }: { status: SectionStatusMap }) {
               }}
             >
               {t(g.labelKey)}
+              {groupUnsaved ? (
+                <span className={styles.tocChipUnsaved} aria-label={t('account.tocUnsaved')} />
+              ) : null}
               {todo > 0 ? (
                 <span className={styles.tocChipBadge} aria-label={t('account.tocTodoCount', { count: todo })}>
                   {todo}
@@ -1710,6 +1786,9 @@ function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfileProps)
    * flight and (b) the local value still matches what we last synced
    * from props. If the user has typed since we synced, lastSynced !==
    * current, so we skip the update and preserve their draft. */
+  const basicKey = (d: string, b: string) => JSON.stringify([d.trim(), b.trim()]);
+  const [savedBasic, markBasicSaved] = useSavedSnapshot(basicKey(initialDisplayName, initialBio));
+  useReportDirty('account-basic', basicKey(displayName, bio) !== savedBasic);
   const lastSyncedDisplay = useRef(initialDisplayName);
   const lastSyncedBio = useRef(initialBio);
   useEffect(() => {
@@ -1742,6 +1821,7 @@ function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfileProps)
         setStatus({ kind: 'err', message: t('account.profileContentSaveFailed') });
         return;
       }
+      markBasicSaved(basicKey(displayName, bio));
       setStatus({ kind: 'ok', message: t('account.profileContentSaved') });
       refreshAccount();
       track('profile_basic_set', { hasName: !!displayName.trim(), hasBio: !!bio.trim() });
@@ -1826,6 +1906,18 @@ function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialL
    * excluded from the comparison. */
   const linksKey = (arr: SocialLinkDraft[]) =>
     JSON.stringify(arr.map((l) => [l.platform, l.handle]));
+  const savedLinksKey = (arr: SocialLinkDraft[]) =>
+    JSON.stringify(
+      arr
+        .filter((l) => l.handle.trim() !== '')
+        .map((l) => [l.platform, parseSocialHandle(l.platform, l.handle) ?? l.handle.trim()]),
+    );
+  const socialKey = (arr: SocialLinkDraft[], show: boolean) =>
+    JSON.stringify([savedLinksKey(arr), show]);
+  const [savedSocial, markSocialSaved] = useSavedSnapshot(
+    socialKey(initialSocialLinks, initialShowSocialLinks),
+  );
+  useReportDirty('account-social', socialKey(links, showLinks) !== savedSocial);
   const lastSyncedLinks = useRef(linksKey(initialSocialLinks));
   const lastSyncedShow = useRef(initialShowSocialLinks);
   useEffect(() => {
@@ -1901,6 +1993,7 @@ function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialL
         return;
       }
       setLinks(cleanLinks);
+      markSocialSaved(socialKey(cleanLinks, showLinks));
       setStatus({ kind: 'ok', message: t('account.profileContentSaved') });
       refreshAccount();
       track('profile_links_set', { linkCount: wire.length, showLinks });
@@ -2115,6 +2208,22 @@ function FeaturedCafesCard() {
   const { t, locale } = useI18n();
   const { visitedShops } = useApp();
   const [cafes, setCafes] = useState<FeaturedCafeDraft[]>([]);
+  // Snapshot of what's saved server-side (set on load and after each save).
+  const cafesKey = (list: FeaturedCafeDraft[]) =>
+    JSON.stringify(
+      list.map((c) => [
+        c.placeId,
+        c.relation,
+        c.note.trim(),
+        c.linkInstagram.trim(),
+        c.linkWebsite.trim(),
+        c.linkMenu.trim(),
+        c.linkBookingExternal.trim(),
+        c.ownerPinnedNote.trim(),
+      ]),
+    );
+  const [savedCafesKey, setSavedCafesKey] = useState(() => cafesKey([]));
+  useReportDirty('account-cafes', cafesKey(cafes) !== savedCafesKey);
   const [cafeQuery, setCafeQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<StatusBanner>(null);
@@ -2161,8 +2270,7 @@ function FeaturedCafesCard() {
           }>;
         };
         if (cancelled || !data.featuredCafes) return;
-        setCafes(
-          data.featuredCafes.map((c) => ({
+        const loaded: FeaturedCafeDraft[] = data.featuredCafes.map((c) => ({
             placeId: c.placeId,
             name: c.name,
             address: c.address,
@@ -2181,8 +2289,9 @@ function FeaturedCafesCard() {
             websiteUri: null,
             googleMapsUri: c.googleMapsUri,
             ownerVerified: c.ownerVerified,
-          })),
-        );
+          }));
+        setCafes(loaded);
+        setSavedCafesKey(cafesKey(loaded));
       } catch {
         /* keep cafes empty — user can still add fresh ones */
       }
@@ -2263,6 +2372,7 @@ function FeaturedCafesCard() {
         setStatus({ kind: 'err', message: t('account.profileContentSaveFailed') });
         return;
       }
+      setSavedCafesKey(cafesKey(cafes));
       // Re-fetch so the verified flag reflects the server's decision
       // after this save. Cheap; one row per cafe and we cap at 5.
       try {
@@ -2714,6 +2824,11 @@ function BookingSetupCard({
   const { t } = useI18n();
   const [address, setAddress] = useState(initialAddress);
   const [days, setDays] = useState<Availability>(initialAvailability);
+  const bookingKey = (a: string, d: Availability) => JSON.stringify([a.trim(), d]);
+  const [savedBooking, markBookingSaved] = useSavedSnapshot(
+    bookingKey(initialAddress, initialAvailability),
+  );
+  useReportDirty('account-booking', bookingKey(address, days) !== savedBooking);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<StatusBanner>(null);
   useAutoDismissOk(status, setStatus);
@@ -2781,6 +2896,7 @@ function BookingSetupCard({
         setStatus({ kind: 'err', message: t('account.bookingSaveFailed') });
         return;
       }
+      markBookingSaved(bookingKey(address, days));
       setStatus({ kind: 'ok', message: t('account.bookingSaved') });
       refreshAccount();
       track('booking_config_set', {
@@ -2954,6 +3070,7 @@ function CalendarSyncCard({
   // button enabled forever once a save landed: the prop is stale until
   // the parent re-fetches, but the user has nothing new to save.
   const [savedUrl, setSavedUrl] = useState(initialUrl);
+  useReportDirty('account-calendar', url.trim() !== savedUrl.trim());
   const dirty = url.trim() !== savedUrl.trim();
 
   async function send(payload: { busyCalendarIcsUrl: string | null }) {
