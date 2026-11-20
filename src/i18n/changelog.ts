@@ -18,6 +18,54 @@ export type ChangelogEntry = {
 export const changelogByLocale: Record<Locale, ChangelogEntry[]> = {
   en: [
     {
+      isoDate: '2026-11-20',
+      title: 'Profiles and account, rebuilt',
+      bullets: [
+        'Public profile redesign: an editorial layout, full colour themes with a real dark mode, a live preview while you edit, and a share card that matches your theme.',
+        'Social links now come from a list of platforms (X, Instagram, GitHub, RedNote, Weibo and more): enter your username or paste your profile link. Platform names follow your language.',
+        'Account page reorganised: grouped sidebar with setup progress, mobile navigation, unsaved-changes markers and a warning before you leave. Booking settings stay folded away until you turn them on.',
+        'Clearer booking setup: a readiness checklist, address autocomplete and availability presets. Calendar sync now accepts feeds from the major calendar providers.',
+        'Passport: log a visit right from the page with a date. Visits are stamped after a meetup, and syncing no longer undoes your edits.',
+        'Safer public pages: a bot check on the booking form, a "Report this page" link on profiles, and reserved usernames against impersonation.',
+        'More compact result cards; fixed pinyin-style addresses, the greeting name, Safari avatar uploads, and bookings now refresh in place.',
+      ],
+    },
+    {
+      isoDate: '2026-11-16',
+      title: 'Plan for a meeting time',
+      bullets: [
+        'Search for a specific meeting time: opening hours are checked on the café\'s own clock.',
+        'Filters now live inside the search card before your first search.',
+        'Shared proposal links preview as a coffee invite card; clearer page titles and share images.',
+        'Ambiguous addresses now resolve to the place near the other person.',
+        'AI review summaries work again; cards get partial-fill stars and a quieter failure state.',
+        'The home page no longer jumps while loading, and Chinese and Japanese text wraps more naturally.',
+      ],
+    },
+    {
+      isoDate: '2026-10-27',
+      title: 'A calmer home and result cards',
+      bullets: [
+        'Redesigned home: the hero is centred on the search form, which now starts on the first screen.',
+        'Calmer result cards; fixed a squashed first card and sideways scrolling on mobile.',
+        'Faster: Google Maps loads only on map pages, and share images are cached at the edge.',
+        'A newer search always wins over a slower older one.',
+        'Security and email fixes, including cancellation emails for bookings without a café.',
+      ],
+    },
+    {
+      isoDate: '2026-05-13',
+      title: 'Mood tiles, directions and a setup wizard',
+      bullets: [
+        'Pick a mood tile and the agent picks the mode (it also chooses one by time of day). A reasoning strip explains why these cafés were picked.',
+        'Get directions from results, bookings and emails; map lines from each person to the café show fairness at a glance.',
+        'New first-run setup wizard at /account/setup; the signed-in home leads with action items and your share link.',
+        'Booking approval emails include a calendar invite (.ics); approving suggests cafés from your passport and stamps it.',
+        'Theme presets for your public profile; a Bookings link in the header and an intro page for signed-out visitors.',
+        'A "new version available" prompt, plus a big round of accessibility, performance and security fixes.',
+      ],
+    },
+    {
       isoDate: '2026-05-03',
       title: 'Coffee booking, refined end-to-end',
       bullets: [
@@ -144,6 +192,54 @@ export const changelogByLocale: Record<Locale, ChangelogEntry[]> = {
   ],
   ja: [
     {
+      isoDate: '2026-11-20',
+      title: 'プロフィールとアカウントを作り直しました',
+      bullets: [
+        '公開プロフィールをリデザイン：エディトリアルなレイアウト、ダークモードを含むフルカラーテーマ、編集中のライブプレビュー、テーマに合わせたシェアカード。',
+        'SNS リンクはプラットフォーム一覧から選ぶ方式に（X・Instagram・GitHub・小紅書・Weibo など）。ユーザー名を入力するか、プロフィールのリンクを貼り付けるだけ。プラットフォーム名も表示言語に合わせて切り替わります。',
+        'アカウントページを再構成：設定の進み具合がわかるグループ化サイドバー、モバイル用ナビ、未保存の印と離脱前の確認。予約設定はオンにするまで折りたたまれます。',
+        '予約設定がわかりやすく：準備チェックリスト、住所のオートコンプリート、空き時間のプリセット。カレンダー同期は主要カレンダーサービスのフィードに対応。',
+        'パスポート：ページから日付つきで訪問を記録できるように。会った後は自動でスタンプが押され、同期で編集が元に戻ることもなくなりました。',
+        '公開ページをより安全に：予約フォームにボット対策、プロフィールに「このページを報告」、なりすまし防止のためのユーザー名予約。',
+        '検索結果カードをコンパクトに。ピンイン表記の住所、あいさつの名前、Safari でのアバターアップロードを修正し、予約は操作後にその場で更新されます。',
+      ],
+    },
+    {
+      isoDate: '2026-11-16',
+      title: '待ち合わせ時刻に合わせて探せるように',
+      bullets: [
+        '待ち合わせの時刻を指定して検索。営業時間はカフェの現地時間で判定します。',
+        '最初の検索前は、フィルターが検索カードの中に入りました。',
+        '共有した提案リンクがコーヒーの招待カードとしてプレビューされるように。ページタイトルとシェア画像も改善。',
+        'あいまいな住所は、相手の近くの候補を優先するようにしました。',
+        'AI のレビュー要約が再び表示されるように。星は部分塗りに、失敗時の表示も控えめに。',
+        '読み込み中にホームがずれなくなり、日本語・中国語の改行も自然になりました。',
+      ],
+    },
+    {
+      isoDate: '2026-10-27',
+      title: '落ち着いたホームと結果カード',
+      bullets: [
+        'ホームをリデザイン：ヒーローを検索フォームの軸にそろえ、フォームが最初の画面に収まるように。',
+        '結果カードを落ち着いたデザインに。最初のカードがつぶれる問題とモバイルの横スクロールを修正。',
+        '高速化：Google マップは地図のあるページだけで読み込み、シェア画像はエッジでキャッシュ。',
+        '新しい検索が、遅れて返ってきた古い結果に上書きされなくなりました。',
+        'セキュリティとメールの修正（カフェ未定の予約のキャンセルメールなど）。',
+      ],
+    },
+    {
+      isoDate: '2026-05-13',
+      title: 'ムードタイル、経路案内、セットアップウィザード',
+      bullets: [
+        'ムードタイルを選ぶとエージェントがモードを決めます（時間帯に応じた自動選択も）。なぜこのカフェなのかを説明する理由表示も追加。',
+        '検索結果・予約・メールから経路案内を開けるように。各自からカフェへの線を地図に描き、公平さがひと目でわかります。',
+        '/account/setup に初回セットアップウィザードを追加。サインイン後のホームはやることリストと共有リンクから始まります。',
+        '予約承認メールにカレンダー招待（.ics）を添付。承認時はパスポートのカフェを提案し、スタンプも自動で押します。',
+        '公開プロフィールにテーマのプリセット。ヘッダーに予約リンク、未ログイン向けの紹介ページも追加。',
+        '「新しいバージョンがあります」の通知に加え、アクセシビリティ・パフォーマンス・セキュリティを大幅に改善。',
+      ],
+    },
+    {
       isoDate: '2026-05-03',
       title: 'コーヒー予約フローの全面リニューアル',
       bullets: [
@@ -269,6 +365,54 @@ export const changelogByLocale: Record<Locale, ChangelogEntry[]> = {
     },
   ],
   zh: [
+    {
+      isoDate: '2026-11-20',
+      title: '个人主页和账户全面重做',
+      bullets: [
+        '公开主页重新设计：杂志式排版、带真正深色模式的完整配色主题、编辑时实时预览，分享卡片也跟随主题。',
+        '社交链接改为从平台列表中选择（X、Instagram、GitHub、小红书、微博等），填用户名或直接粘贴主页链接即可。平台名称会跟随界面语言显示。',
+        '账户页重新整理：分组侧栏显示设置进度，新增移动端导航，未保存的部分会标记出来，离开前会提醒。预约相关设置在开启前默认收起。',
+        '预约设置更清晰：准备情况清单、地址自动补全、可约时间预设。日历同步现在只接受主流日历服务的订阅链接。',
+        '咖啡护照：可以直接在页面上按日期记录一次到访；见面后自动盖章，同步也不会再覆盖你的修改。',
+        '公开页面更安全：预约表单加了人机验证，主页新增「举报此页面」，并保留了部分用户名以防冒充。',
+        '搜索结果卡片更紧凑；修复了拼音地址、问候语里的名字、Safari 上传头像等问题，预约操作后会就地刷新。',
+      ],
+    },
+    {
+      isoDate: '2026-11-16',
+      title: '按见面时间找咖啡店',
+      bullets: [
+        '可以按具体的见面时间搜索，营业时间按咖啡店当地时间判断。',
+        '第一次搜索前，筛选项直接放在搜索卡片里。',
+        '分享的提议链接会显示成一张咖啡邀请卡片；页面标题和分享图也更好了。',
+        '有歧义的地址会优先解析为对方附近的那个。',
+        'AI 评价摘要恢复正常；星级改为部分填充，失败时的提示更安静。',
+        '首页加载时不再跳动，中文和日文的换行也更自然。',
+      ],
+    },
+    {
+      isoDate: '2026-10-27',
+      title: '更沉稳的首页和结果卡片',
+      bullets: [
+        '首页重新设计：hero 与搜索框对齐居中，搜索框在首屏就能看到。',
+        '结果卡片更简洁；修复了第一张卡片被挤压和移动端横向滚动的问题。',
+        '更快：Google 地图只在有地图的页面加载，分享图在边缘节点缓存。',
+        '新的搜索不会再被晚返回的旧结果覆盖。',
+        '安全和邮件方面的修复，包括没有选定咖啡店的预约也能正常发送取消邮件。',
+      ],
+    },
+    {
+      isoDate: '2026-05-13',
+      title: '心情卡片、路线导航和设置向导',
+      bullets: [
+        '选一张心情卡片，agent 就会选好模式（也会按时段自动选择），并说明为什么挑了这些咖啡店。',
+        '在搜索结果、预约和邮件里都能一键导航；地图上画出每个人到咖啡店的路线，公平与否一目了然。',
+        '新增 /account/setup 首次设置向导；登录后首页先展示待办事项和你的分享链接。',
+        '预约确认邮件附带日历邀请（.ics）；确认时会推荐你护照里的咖啡店，并自动盖章。',
+        '公开主页支持主题预设；顶栏新增预约入口，未登录用户可以看到预约功能介绍页。',
+        '新增「有新版本」提示，并集中修复了一批无障碍、性能和安全问题。',
+      ],
+    },
     {
       isoDate: '2026-05-03',
       title: '约咖啡见面功能整体优化',
