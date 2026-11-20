@@ -160,7 +160,7 @@
   padding: 0.55rem 0.7rem 0.6rem;
   border: 1px solid var(--ac-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--ac-surface);
   color: var(--ac-text);
   cursor: pointer;
   font-family: inherit;
@@ -175,12 +175,12 @@
 
 .dateChipSelected {
   background: var(--ac-accent);
-  color: #fff;
+  color: var(--ac-on-accent);
   border-color: var(--ac-accent);
 }
 
 .dateChipSelected:hover:not(:disabled) {
-  color: #fff;
+  color: var(--ac-on-accent);
 }
 
 .dateChipWeekday {
@@ -230,7 +230,7 @@
   padding: 0.55rem 0.4rem;
   border: 1px solid var(--ac-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--ac-surface);
   color: var(--ac-text);
   cursor: pointer;
   font-family: inherit;
@@ -247,12 +247,12 @@
 
 .slotChipSelected {
   background: var(--ac-accent);
-  color: #fff;
+  color: var(--ac-on-accent);
   border-color: var(--ac-accent);
 }
 
 .slotChipSelected:hover:not(:disabled) {
-  color: #fff;
+  color: var(--ac-on-accent);
 }
 
 /* ---------- form ---------- */
@@ -288,14 +288,14 @@
    * smaller, and `1rem` would then trigger iOS's zoom-on-focus. Pin
    * to 16px to defend against that regardless of root size. */
   font-size: 16px;
-  background: #fff;
+  background: var(--ac-surface);
   color: var(--ac-text);
 }
 
 .input:focus {
   outline: none;
   border-color: var(--ac-accent);
-  box-shadow: 0 0 0 3px rgba(163, 107, 62, 0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-accent) 18%, transparent);
 }
 
 .textarea {
@@ -305,7 +305,7 @@
   border-radius: 8px;
   font-family: inherit;
   font-size: 1rem;
-  background: #fff;
+  background: var(--ac-surface);
   color: var(--ac-text);
   resize: vertical;
   min-height: 4.5rem;
@@ -314,7 +314,7 @@
 .textarea:focus {
   outline: none;
   border-color: var(--ac-accent);
-  box-shadow: 0 0 0 3px rgba(163, 107, 62, 0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-accent) 18%, transparent);
 }
 
 .fieldOptional {
@@ -349,7 +349,7 @@
   /* Sage = "this is the moment of commit" — same visual cue as the search
      submit button on the home page. */
   background: var(--ac-accent-2);
-  color: #fff;
+  color: var(--ac-on-accent);
   font-size: 0.95rem;
   font-weight: 600;
   font-family: inherit;
@@ -367,7 +367,7 @@
 }
 
 .submit:disabled {
-  background: #c8b39a;
+  background: var(--ac-muted-fill);
   cursor: progress;
 }
 
@@ -375,7 +375,7 @@
   padding: 0.7rem 0.9rem;
   border-radius: 999px;
   border: 1px solid var(--ac-border);
-  background: #fff;
+  background: var(--ac-surface);
   color: var(--ac-text);
   font-family: inherit;
   font-size: 0.9rem;
@@ -412,7 +412,7 @@
 }
 
 .successCafe {
-  background: #faf6f1;
+  background: var(--ac-surface-tinted);
   border-radius: 10px;
   padding: 0.7rem 0.85rem;
   text-align: left;

@@ -1692,13 +1692,27 @@
   gap: var(--ac-space-3);
   margin-top: var(--ac-space-2);
 }
+.themeSwatchItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 4.25rem;
+}
+.themeSwatchName {
+  font-size: 0.75rem;
+  color: var(--ac-text-muted);
+  text-align: center;
+  line-height: 1.2;
+}
 .themeSwatch {
   --swatch-size: 44px;
   width: var(--swatch-size);
   height: var(--swatch-size);
   border-radius: 50%;
   border: 2px solid transparent;
-  background: var(--swatch-color, var(--ac-accent));
+  /* data-theme on the swatch resolves the preset's own band. */
+  background: var(--ac-theme-band);
   cursor: pointer;
   padding: 0;
   position: relative;
@@ -1727,4 +1741,91 @@
   font-size: 1.1rem;
   font-weight: 700;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* ---------- theme live preview ---------- */
+.themePreview {
+  margin-top: var(--ac-space-4);
+  padding: 0.9rem;
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-page-bg);
+  border: 1px solid var(--ac-border);
+}
+.themePreviewHero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 2rem 1rem 1rem;
+  border-radius: var(--ac-radius-md);
+  border: 1px solid var(--ac-border);
+  background: linear-gradient(135deg, var(--ac-surface-tinted) 0%, var(--ac-page-bg) 100%);
+  box-shadow: var(--ac-shadow-card);
+  color: var(--ac-text);
+  text-align: center;
+}
+.themePreviewHero::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3.6rem;
+  background: var(--ac-theme-band);
+}
+.themePreviewHero > * {
+  position: relative;
+}
+.themePreviewAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid var(--ac-surface);
+  background: var(--ac-accent);
+  color: var(--ac-on-accent);
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ac-font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+.themePreviewName {
+  font-family: var(--ac-font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.themePreviewBio {
+  font-size: 0.82rem;
+  color: var(--ac-text-muted);
+  max-width: 22rem;
+}
+.themePreviewActions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+.themePreviewButton {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: var(--ac-accent);
+  color: var(--ac-on-accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.themePreviewChip {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-border);
+  color: var(--ac-text);
+  font-size: 0.8rem;
+}
+.themePreviewLink {
+  display: inline-block;
+  margin-top: var(--ac-space-2);
+  font-size: 0.85rem;
+  color: var(--ac-accent);
+  font-weight: 600;
 }

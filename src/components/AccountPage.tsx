@@ -769,6 +769,10 @@ function SignedInAccountPage({
               ? (sessionUser as { themePreset?: ThemePreset }).themePreset
               : 'default') ?? 'default'
           }
+          username={effectiveUsername}
+          displayName={sessionUser.displayName ?? null}
+          bio={sessionUser.bio ?? null}
+          image={sessionUser.image ?? null}
         />
 
         <FeaturedCafesCard />

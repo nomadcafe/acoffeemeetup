@@ -140,7 +140,12 @@ export function PublicProfilePage({ username }: Props) {
   }, [username]);
 
   return (
-    <div className={styles.app}>
+    <div
+      className={styles.app}
+      // On the page root (not just <main>) so the page background and
+      // header pick up the theme too.
+      data-theme={state.kind === 'ready' ? state.profile.themePreset : undefined}
+    >
       <SkipToContent />
       <header className={styles.header}>
         <div className={styles.headerInner}>
@@ -165,7 +170,6 @@ export function PublicProfilePage({ username }: Props) {
         id="content"
         tabIndex={-1}
         className={styles.main}
-        data-theme={state.kind === 'ready' ? state.profile.themePreset : undefined}
       >
         {state.kind === 'loading' ? (
           <ProfileSkeleton />

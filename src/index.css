@@ -77,37 +77,116 @@
   --ac-font-display: 'Fraunces', 'Iowan Old Style', 'Georgia', serif;
 }
 
-/* Public-profile theme presets. Applied via data-theme on PublicProfilePage's
- * root container. We override only the three tokens that carry the personality
- * of the page: the primary accent, its hover/dark state, and the soft surface
- * tint that drives the hero gradient. Shadow rgbs intentionally stay warm
- * across all themes — the cards still read as "coffee app", the accent just
- * picks up the user's chosen flavor. Each preset's accent has been picked to
- * keep ≥4.5:1 contrast vs white so primary CTAs stay AA-compliant. */
+/* Public-profile theme presets, applied via data-theme on the profile page
+ * root (and on the Account page's theme preview). Each preset is a full
+ * palette — page background, surfaces, borders, text, accent — plus a
+ * header band gradient, so switching theme visibly changes the page rather
+ * than just the link colour. Light presets keep their accent ≥4.5:1 against
+ * white so text on accent buttons stays AA; "midnight" is a dark theme and
+ * flips --ac-on-accent to a dark ink on its light accent. */
+:root,
+[data-theme='default'] {
+  --ac-theme-band: linear-gradient(120deg, #6f4e37 0%, #a87a54 55%, #d9b48c 100%);
+  --ac-on-accent: #ffffff;
+  --ac-highlight-bg: #fff4d8;
+  --ac-highlight-text: #8a5d12;
+  --ac-highlight-border: #d9c79b;
+  --ac-success: #2e7d4f;
+  --ac-muted-fill: #c8b39a;
+}
 [data-theme='sage'] {
+  --ac-page-bg: #f3f6ef;
+  --ac-surface-tinted: #e7eedf;
+  --ac-border: #dde6d4;
+  --ac-border-strong: #c2d0b5;
   --ac-accent: #5e7a52;
   --ac-accent-dark: #4c6342;
-  --ac-surface-tinted: #eff3ea;
+  --ac-accent-2: #5e7a52;
+  --ac-accent-2-dark: #4c6342;
+  --ac-text: #1f2a1b;
+  --ac-text-muted: #56664e;
+  --ac-highlight-bg: #eef3d9;
+  --ac-highlight-text: #5f6a17;
+  --ac-highlight-border: #cbd5a3;
+  --ac-muted-fill: #b8c7ad;
+  --ac-theme-band: linear-gradient(120deg, #4c6342 0%, #7f9a6f 55%, #c4d4b0 100%);
 }
 [data-theme='sunset'] {
+  --ac-page-bg: #fcf4ed;
+  --ac-surface-tinted: #fae6d5;
+  --ac-border: #f0dccb;
+  --ac-border-strong: #e2c1a4;
   --ac-accent: #b25e30;
   --ac-accent-dark: #8e4a25;
-  --ac-surface-tinted: #fbf0e6;
+  --ac-accent-2: #b25e30;
+  --ac-accent-2-dark: #8e4a25;
+  --ac-text: #2e1a10;
+  --ac-text-muted: #73513c;
+  --ac-muted-fill: #ddbfa5;
+  --ac-theme-band: linear-gradient(120deg, #a2522a 0%, #dc7f45 50%, #f4bd78 100%);
 }
 [data-theme='midnight'] {
-  --ac-accent: #4a5b8c;
-  --ac-accent-dark: #38456b;
-  --ac-surface-tinted: #eef0f5;
+  color-scheme: dark;
+  --ac-page-bg: #0e1321;
+  --ac-surface: #161d30;
+  --ac-surface-tinted: #1d2640;
+  --ac-border: #28324d;
+  --ac-border-strong: #3a4667;
+  --ac-accent: #93a6e6;
+  --ac-accent-dark: #b6c4f2;
+  --ac-accent-2: #93a6e6;
+  --ac-accent-2-dark: #b6c4f2;
+  --ac-on-accent: #0e1321;
+  --ac-text: #e7eaf3;
+  --ac-text-muted: #a0a8c0;
+  --ac-primary: #e7eaf3;
+  --ac-primary-hover: #ffffff;
+  --ac-on-primary: #0e1321;
+  --ac-highlight-bg: #2e2a1c;
+  --ac-highlight-text: #e8c76f;
+  --ac-highlight-border: #5c5031;
+  --ac-success: #72cf97;
+  --ac-muted-fill: #3a4667;
+  --ac-danger: #f08a8a;
+  --ac-danger-bg: #3a1e22;
+  --ac-danger-border: #6b2f36;
+  --ac-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --ac-shadow-card-hover: 0 2px 6px rgba(0, 0, 0, 0.45), 0 14px 32px rgba(0, 0, 0, 0.4);
+  --ac-focus-ring: 0 0 0 3px rgba(147, 166, 230, 0.35);
+  --ac-focus-ring-2: 0 0 0 3px rgba(147, 166, 230, 0.35);
+  --ac-theme-band: linear-gradient(120deg, #1f2b52 0%, #3b4f8f 50%, #7d8fd0 100%);
 }
 [data-theme='rose'] {
+  --ac-page-bg: #fbf3f4;
+  --ac-surface-tinted: #f6e2e5;
+  --ac-border: #efd7db;
+  --ac-border-strong: #debac1;
   --ac-accent: #a05060;
   --ac-accent-dark: #7e3d4a;
-  --ac-surface-tinted: #f7eceb;
+  --ac-accent-2: #a05060;
+  --ac-accent-2-dark: #7e3d4a;
+  --ac-text: #2c1418;
+  --ac-text-muted: #725158;
+  --ac-muted-fill: #d9b6bd;
+  --ac-theme-band: linear-gradient(120deg, #8a4252 0%, #c27484 50%, #ecbcc4 100%);
 }
 [data-theme='mono'] {
-  --ac-accent: #4a4742;
-  --ac-accent-dark: #2f2c28;
-  --ac-surface-tinted: #f0ede9;
+  --ac-page-bg: #f5f5f3;
+  --ac-surface-tinted: #ebeae7;
+  --ac-border: #e1e0dc;
+  --ac-border-strong: #c8c6c0;
+  --ac-accent: #3d3a36;
+  --ac-accent-dark: #22201d;
+  --ac-accent-2: #3d3a36;
+  --ac-accent-2-dark: #22201d;
+  --ac-text: #1c1b19;
+  --ac-text-muted: #5c5954;
+  --ac-highlight-bg: #ecebe6;
+  --ac-highlight-text: #4a4741;
+  --ac-highlight-border: #cfccc4;
+  --ac-success: #3d6b4f;
+  --ac-muted-fill: #c8c6c0;
+  --ac-theme-band: linear-gradient(120deg, #22201d 0%, #5a5650 55%, #a8a49c 100%);
 }
 
 * {

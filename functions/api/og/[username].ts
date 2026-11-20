@@ -5,6 +5,7 @@ import { getDb } from '../../_lib/db';
 import { featuredCafes, user, visitedShops } from '../../_lib/db/schema';
 import { jsonError } from '../../_lib/jsonError';
 import { rateLimit, rateLimitResponse } from '../../_lib/rateLimit';
+import { themePalette, type ThemePalette } from '../../../src/utils/themePalette';
 import { safeProfileText } from '../../../src/utils/profileText';
 
 /**
@@ -20,6 +21,7 @@ interface ProfileForCard {
   username: string;
   displayName: string | null;
   bio: string | null;
+  themePreset: string | null;
   cups: number;
   shops: number;
   streak: number;
@@ -140,6 +142,7 @@ async function loadProfile(env: AuthEnv, username: string): Promise<ProfileForCa
     username: owner.username ?? username,
     displayName: safeProfileText(owner.displayName, 'displayName'),
     bio: safeProfileText(owner.bio, 'bio'),
+    themePreset: owner.themePreset ?? null,
     cups,
     shops,
     streak,
@@ -152,27 +155,27 @@ async function loadProfile(env: AuthEnv, username: string): Promise<ProfileForCa
  *  Uses word labels ("VERIFIED OWNER" / "OWNS" / "FAVORITE") instead of
  *  emoji icons because satori's default bundled font has no glyphs for
  *  ✓ / 🏠 / ❤ — they'd render as "NO GLYPH" boxes in the share image. */
-function renderFeatured(f: ProfileForCard['featured']): string {
+function renderFeatured(f: ProfileForCard['featured'], c: ThemePalette): string {
   if (!f) return '';
   let label: string;
   let labelColor: string;
   if (f.relation === 'owned') {
     label = f.verified ? 'VERIFIED OWNER' : 'OWNS';
-    labelColor = f.verified ? '#2e8b57' : '#a36b3e';
+    labelColor = f.verified ? '#2e8b57' : c.accent;
   } else {
     label = 'FAVORITE';
-    labelColor = '#a36b3e';
+    labelColor = c.accent;
   }
   // 2-line layout when we have a snippet, single line otherwise. Inline
   // styles only — satori doesn't read external CSS.
   const snippet = f.snippet
-    ? `<span style="font-size:24px;color:#5a4a3e;margin-top:8px;line-height:1.3;">${escapeSvg(f.snippet)}</span>`
+    ? `<span style="font-size:24px;color:${c.muted};margin-top:8px;line-height:1.3;">${escapeSvg(f.snippet)}</span>`
     : '';
   return `
-    <div style="display:flex;flex-direction:column;background:#fff4d8;border-radius:14px;padding:18px 24px;margin-top:24px;max-width:1050px;">
+    <div style="display:flex;flex-direction:column;background:${c.highlightBg};border-radius:14px;padding:14px 22px;margin-top:20px;max-width:1050px;">
       <div style="display:flex;align-items:baseline;">
         <span style="font-size:18px;font-weight:700;color:${labelColor};letter-spacing:0.08em;margin-right:14px;">${label}</span>
-        <span style="font-size:30px;font-weight:700;color:#2c1810;letter-spacing:-0.3px;">${escapeSvg(truncate(f.name, 38))}</span>
+        <span style="font-size:30px;font-weight:700;color:${c.text};letter-spacing:-0.3px;">${escapeSvg(truncate(f.name, 38))}</span>
       </div>
       ${snippet}
     </div>`;
@@ -183,6 +186,8 @@ function renderTemplate(profile: ProfileForCard): string {
   const handle = profile.displayName ? `@${profile.username}` : null;
   const bio = profile.bio ? truncate(profile.bio, 110) : null;
   const initial = (profile.displayName ?? profile.username)[0]?.toUpperCase() ?? '?';
+  // Same palette as the page's [data-theme], so the shared card matches.
+  const c = themePalette(profile.themePreset);
 
   // satori (workers-og's renderer) is strict: any <div> with more than
   // one child node must have an explicit `display: flex` or
@@ -191,44 +196,43 @@ function renderTemplate(profile: ProfileForCard): string {
   // template stays valid no matter how the runtime parses whitespace
   // around the JSX-ish HTML.
   return `
-<div style="display:flex;flex-direction:column;width:100%;height:100%;background:#fff7ec;font-family:system-ui,sans-serif;color:#2c1810;">
-  <div style="display:flex;align-items:center;height:88px;background:#2c1810;color:#fff;padding:0 56px;">
+<div style="display:flex;flex-direction:column;width:100%;height:100%;background:${c.bg};font-family:system-ui,sans-serif;color:${c.text};">
+  <div style="display:flex;align-items:center;height:72px;background-image:linear-gradient(90deg, ${c.bandFrom}, ${c.bandTo});color:#fff;padding:0 56px;">
     <div style="display:flex;align-items:center;font-size:32px;font-weight:600;letter-spacing:-0.5px;">
-      <span style="font-size:38px;margin-right:14px;">☕</span>
       <span>ACoffee</span>
     </div>
   </div>
-  <div style="display:flex;flex-direction:column;flex:1;padding:64px 64px 56px;">
+  <div style="display:flex;flex-direction:column;flex:1;padding:44px 64px 36px;">
     <div style="display:flex;align-items:center;">
-      <div style="display:flex;align-items:center;justify-content:center;width:140px;height:140px;border-radius:9999px;background:#a36b3e;color:#fff;font-size:74px;font-weight:600;font-family:Georgia,serif;letter-spacing:-1px;">
+      <div style="display:flex;align-items:center;justify-content:center;width:120px;height:120px;border-radius:9999px;background:${c.accent};color:${c.onAccent};font-size:64px;font-weight:600;font-family:Georgia,serif;letter-spacing:-1px;">
         <span>${escapeSvg(initial)}</span>
       </div>
       <div style="display:flex;flex-direction:column;margin-left:36px;">
         <span style="font-size:64px;font-weight:700;letter-spacing:-1.5px;line-height:1;">${truncate(heroName, 24)}</span>
-        ${handle ? `<span style="font-size:30px;color:#7a6a60;margin-top:10px;">${escapeSvg(handle)}</span>` : ''}
+        ${handle ? `<span style="font-size:30px;color:${c.muted};margin-top:10px;">${escapeSvg(handle)}</span>` : ''}
       </div>
     </div>
     ${
       bio
-        ? `<div style="display:flex;font-size:32px;color:#3a2a20;margin-top:36px;line-height:1.4;max-width:1050px;"><span>${escapeSvg(bio)}</span></div>`
-        : '<div style="height:36px;"></div>'
+        ? `<div style="display:flex;font-size:30px;color:${c.text};margin-top:24px;line-height:1.35;max-width:1050px;"><span>${escapeSvg(bio)}</span></div>`
+        : '<div style="display:flex;height:24px;"></div>'
     }
-    ${renderFeatured(profile.featured)}
-    <div style="display:flex;margin-top:auto;gap:18px;">
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;background:#fff;border:1px solid #e8d8c4;border-radius:18px;padding:24px;">
-        <span style="font-size:64px;font-weight:700;color:#2c1810;line-height:1;">${profile.cups}</span>
-        <span style="font-size:22px;color:#7a6a60;margin-top:10px;letter-spacing:0.5px;">CUPS ☕</span>
+    ${renderFeatured(profile.featured, c)}
+    <div style="display:flex;margin-top:auto;padding-top:20px;gap:18px;">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;background:${c.card};border:1px solid ${c.border};border-radius:18px;padding:16px;">
+        <span style="font-size:52px;font-weight:700;color:${c.text};line-height:1;">${profile.cups}</span>
+        <span style="font-size:22px;color:${c.muted};margin-top:10px;letter-spacing:0.5px;">CUPS</span>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;background:#fff;border:1px solid #e8d8c4;border-radius:18px;padding:24px;">
-        <span style="font-size:64px;font-weight:700;color:#2c1810;line-height:1;">${profile.shops}</span>
-        <span style="font-size:22px;color:#7a6a60;margin-top:10px;letter-spacing:0.5px;">CAFÉS</span>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;background:${c.card};border:1px solid ${c.border};border-radius:18px;padding:16px;">
+        <span style="font-size:52px;font-weight:700;color:${c.text};line-height:1;">${profile.shops}</span>
+        <span style="font-size:22px;color:${c.muted};margin-top:10px;letter-spacing:0.5px;">CAFÉS</span>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;background:#fff;border:1px solid #e8d8c4;border-radius:18px;padding:24px;">
-        <span style="font-size:64px;font-weight:700;color:#2c1810;line-height:1;">${profile.streak}</span>
-        <span style="font-size:22px;color:#7a6a60;margin-top:10px;letter-spacing:0.5px;">${profile.streak >= 2 ? 'STREAK 🔥' : 'STREAK'}</span>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;background:${c.card};border:1px solid ${c.border};border-radius:18px;padding:16px;">
+        <span style="font-size:52px;font-weight:700;color:${c.text};line-height:1;">${profile.streak}</span>
+        <span style="font-size:22px;color:${c.muted};margin-top:10px;letter-spacing:0.5px;">STREAK</span>
       </div>
     </div>
-    <div style="display:flex;justify-content:flex-end;font-size:22px;color:#7a6a60;margin-top:24px;">
+    <div style="display:flex;justify-content:flex-end;font-size:22px;color:${c.muted};margin-top:14px;">
       <span>acoffee.com/${escapeSvg(profile.username)}</span>
     </div>
   </div>

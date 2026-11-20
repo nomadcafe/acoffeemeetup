@@ -1,11 +1,9 @@
 
 
-/* List of {value, color} pairs for the theme picker. `value` matches the
- * server-side enum + the [data-theme] attribute on PublicProfilePage; `color`
- * is the accent shown on the swatch (NOT applied via CSS vars — we want the
- * picker to show all options regardless of which theme is active, so each
- * swatch carries its own inline color). Keep in sync with the [data-theme]
- * rules in src/index.css. */
+/* Theme presets for the picker. `value` matches the server-side enum and the
+ * [data-theme] palettes in src/index.css (each swatch renders with its own
+ * data-theme, so it shows that theme's band). `color` is the theme accent,
+ * kept as a plain reference; the share image uses src/utils/themePalette.ts. */
 export const THEME_PRESETS = [
   { value: 'default', color: '#6f4e37' },
   { value: 'sage', color: '#5e7a52' },

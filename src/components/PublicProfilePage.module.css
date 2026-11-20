@@ -118,13 +118,30 @@
     linear-gradient(135deg, var(--ac-surface-tinted) 0%, var(--ac-page-bg) 100%);
   border: 1px solid var(--ac-border);
   border-radius: var(--ac-radius-lg);
-  padding: 1.85rem 1.4rem 1.6rem;
+  /* Top padding leaves room for the theme band; the avatar overlaps it. */
+  padding: 2.6rem 1.4rem 1.6rem;
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.7rem;
   text-align: center;
   box-shadow: var(--ac-shadow-card);
+}
+
+/* Theme band: the strongest visual signal of the chosen theme. */
+.heroCard::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5.25rem;
+  background: var(--ac-theme-band);
+}
+
+/* Everything in the hero sits above the band. */
+.heroCard > * {
+  position: relative;
 }
 
 .avatar {
@@ -272,7 +289,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #fff4d8;
+  background: var(--ac-highlight-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -373,8 +390,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #fff4d8;
-  color: #b07a1f;
+  background: var(--ac-highlight-bg);
+  color: var(--ac-highlight-text);
   font-size: 0.85rem;
   font-weight: 700;
   display: flex;
@@ -447,7 +464,7 @@
   margin-top: 1rem;
   padding: 0.55rem 1rem;
   background: var(--ac-accent);
-  color: #fff;
+  color: var(--ac-on-accent);
   border: 0;
   border-radius: 8px;
   text-decoration: none;
@@ -523,8 +540,8 @@
 /* Owned cards get a slightly warmer accent — implies "this is a
    business surface" rather than "this is a recommendation." */
 .featuredCafeCardOwned {
-  border-color: #d9c79b;
-  background: #fffbf0;
+  border-color: var(--ac-highlight-border);
+  background: var(--ac-surface-tinted);
 }
 
 .featuredCafeHead {
@@ -546,7 +563,7 @@
 }
 
 .featuredCafeVerified {
-  color: #2e8b57;
+  color: var(--ac-success);
   font-weight: 700;
 }
 
@@ -568,7 +585,7 @@
    stands above the static blurb as the freshest signal. */
 .featuredCafePinned {
   margin-top: 0.65rem;
-  background: #fff4d8;
+  background: var(--ac-highlight-bg);
   border-radius: 8px;
   padding: 0.45rem 0.6rem;
   font-size: 0.85rem;
@@ -578,7 +595,7 @@
 .featuredCafePinnedLabel {
   display: block;
   font-size: 0.68rem;
-  color: #b07a1f;
+  color: var(--ac-highlight-text);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.1rem;
@@ -614,7 +631,7 @@
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
   border: 1px solid var(--ac-border);
-  background: #fff;
+  background: var(--ac-surface);
   color: var(--ac-text);
   font-size: 0.78rem;
   text-decoration: none;

@@ -1,13 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useI18n } from '../../context/I18nContext';
+import { buildLocalizedPathname } from '../../i18n/detectLocale';
 import { track } from '../../utils/analytics';
 import styles from '../AccountPage.module.css';
 import { type StatusBanner, useAccountRefresh, useAutoDismissOk } from './shared';
 import { THEME_PRESETS, type ThemePreset } from './themePresets';
 
-export function ThemeCard({ initialPreset }: { initialPreset: ThemePreset }) {
+interface ThemeCardProps {
+  initialPreset: ThemePreset;
+  /** For the live preview and the "open my page" link. */
+  username: string | null;
+  displayName: string | null;
+  bio: string | null;
+  image: string | null;
+}
+
+export function ThemeCard({ initialPreset, username, displayName, bio, image }: ThemeCardProps) {
   const refreshAccount = useAccountRefresh();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [preset, setPreset] = useState<ThemePreset>(initialPreset);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<StatusBanner>(null);
@@ -56,20 +66,58 @@ export function ThemeCard({ initialPreset }: { initialPreset: ThemePreset }) {
         {THEME_PRESETS.map((p) => {
           const active = p.value === preset;
           return (
-            <button
-              key={p.value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              aria-label={t(`account.themePreset.${p.value}` as never)}
-              className={`${styles.themeSwatch}${active ? ' ' + styles.themeSwatchActive : ''}`}
-              style={{ ['--swatch-color' as string]: p.color }}
-              onClick={() => void handlePick(p.value)}
-              disabled={busy}
-            />
+            <label key={p.value} className={styles.themeSwatchItem}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={active}
+                aria-label={t(`account.themePreset.${p.value}` as never)}
+                className={`${styles.themeSwatch}${active ? ' ' + styles.themeSwatchActive : ''}`}
+                // The swatch previews the theme's band, not just its accent.
+                data-theme={p.value}
+                onClick={() => void handlePick(p.value)}
+                disabled={busy}
+              />
+              <span className={styles.themeSwatchName} aria-hidden>
+                {t(`account.themePreset.${p.value}` as never)}
+              </span>
+            </label>
           );
         })}
       </div>
+      {/* Live preview: a miniature of the public hero card rendered inside
+          the selected theme, so the choice is visible before opening the
+          page. */}
+      <div className={styles.themePreview} data-theme={preset} aria-hidden>
+        <div className={styles.themePreviewHero}>
+          {image ? (
+            <img className={styles.themePreviewAvatar} src={image} alt="" referrerPolicy="no-referrer" />
+          ) : (
+            <div className={styles.themePreviewAvatar}>
+              {(displayName || username || '?').slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div className={styles.themePreviewName}>
+            {displayName || (username ? `@${username}` : t('account.themePreviewName'))}
+          </div>
+          <div className={styles.themePreviewBio}>{bio || t('account.themePreviewBio')}</div>
+          <div className={styles.themePreviewActions}>
+            <span className={styles.themePreviewButton}>{t('account.themePreviewBook')}</span>
+            <span className={styles.themePreviewChip}>☕ 12</span>
+          </div>
+        </div>
+      </div>
+      {username ? (
+        <a
+          className={styles.themePreviewLink}
+          href={buildLocalizedPathname(`/${username}`, locale)}
+          target="_blank"
+          rel="noopener"
+        >
+          {t('account.themeOpenProfile')} ↗
+        </a>
+      ) : null}
+
       {status ? (
         <p
           className={status.kind === 'ok' ? styles.successMsg : styles.errorMsg}
