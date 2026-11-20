@@ -15,6 +15,10 @@ export const user = sqliteTable('user', {
   /* Opt-in: profile pages stay private until the owner publishes. Pairs with
    * username — a profile needs both a slug to live at and an explicit toggle. */
   profilePublic: integer('profile_public', { mode: 'boolean' }).notNull().default(false),
+  /* Set when the admin takes a profile down from the review email. While
+   * set, profile_public is forced false and the owner can't turn it back
+   * on; cleared (and profile_public restored) by the admin's "restore". */
+  profileSuspendedAt: integer('profile_suspended_at', { mode: 'timestamp_ms' }),
   /* Bio-link surface for the public profile (acoffee.com/<username>).
    * `display_name` is the human-friendly name shown above @username;
    * `bio` is one short line under it; `social_links` is a JSON array of

@@ -197,6 +197,13 @@
       "when": 1795133503623,
       "tag": "0027_passport_sync_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1795140841724,
+      "tag": "0028_profile_suspension",
+      "breakpoints": true
     }
   ]
 }

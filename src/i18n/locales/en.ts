@@ -435,6 +435,8 @@ export const messages: MessageDict = {
   'account.goHome': 'Back to home',
   'account.profileTitle': 'Public profile',
   'account.profileToggleLabel': 'Publish my profile',
+  'account.profileSuspendedHint': 'Taken down by ACoffee',
+  'account.profileSuspendedNotice': "Your public page was taken down after review and can't be made public right now. Reply to any ACoffee email if you think this is a mistake.",
   'account.profileToggleAria': 'Toggle public profile visibility',
   'account.profilePublicHint': 'Reachable at acoffee.com/{{username}}.',
   'account.profilePrivateHint': 'Off — your profile is private.',

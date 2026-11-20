@@ -14,6 +14,9 @@ export interface AuthEnv extends DbEnv, SpendCapEnv {
   /** Cloudflare Turnstile secret for the public booking form. When unset
    *  (local dev) the check is skipped; set in production. */
   TURNSTILE_SECRET_KEY?: string;
+  /** Where profile-review notifications go (new handle, profile made
+   *  public, public profile edited). Unset → no notifications. */
+  ADMIN_EMAIL?: string;
   /** Shared secret for the /api/cron/* endpoints. Set in CF dashboard. */
   CRON_SECRET?: string;
   /** Server-side Google Maps key — used for geocoding + Places searches
@@ -123,6 +126,7 @@ export function createAuth(env: AuthEnv) {
          * for client convenience. */
         username: { type: 'string', required: false, input: false },
         profilePublic: { type: 'boolean', required: false, defaultValue: false, input: false },
+        profileSuspendedAt: { type: 'date', required: false, input: false },
         displayName: { type: 'string', required: false, input: false },
         bio: { type: 'string', required: false, input: false },
         socialLinks: { type: 'string', required: false, defaultValue: '[]', input: false },

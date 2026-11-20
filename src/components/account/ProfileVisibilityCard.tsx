@@ -8,9 +8,11 @@ interface VisibilityProps {
   hasUsername: boolean;
   username: string | null;
   initial: boolean;
+  /** Taken down by the admin from a review email: the toggle stays off. */
+  suspended: boolean;
 }
 
-export function ProfileVisibilityCard({ hasUsername, username, initial }: VisibilityProps) {
+export function ProfileVisibilityCard({ hasUsername, username, initial, suspended }: VisibilityProps) {
   const refreshAccount = useAccountRefresh();
   const { t } = useI18n();
   const [enabled, setEnabled] = useState(initial);
@@ -29,7 +31,7 @@ export function ProfileVisibilityCard({ hasUsername, username, initial }: Visibi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial]);
 
-  const canToggle = hasUsername && !busy;
+  const canToggle = hasUsername && !busy && !suspended;
 
   async function handleToggle() {
     if (!canToggle) return;
@@ -65,7 +67,9 @@ export function ProfileVisibilityCard({ hasUsername, username, initial }: Visibi
         <label className={styles.toggleLabel} htmlFor="profile-visibility-toggle">
           {t('account.profileToggleLabel')}
           <span className={styles.toggleSubLabel}>
-            {hasUsername
+            {suspended
+              ? t('account.profileSuspendedHint')
+              : hasUsername
               ? enabled
                 ? t('account.profilePublicHint', { username: username ?? '' })
                 : t('account.profilePrivateHint')
@@ -83,6 +87,11 @@ export function ProfileVisibilityCard({ hasUsername, username, initial }: Visibi
           onClick={() => void handleToggle()}
         />
       </div>
+      {suspended ? (
+        <p className={styles.errorMsg} role="status">
+          {t('account.profileSuspendedNotice')}
+        </p>
+      ) : null}
       {error ? <p className={styles.errorMsg} role="alert">{error}</p> : null}
     </section>
   );

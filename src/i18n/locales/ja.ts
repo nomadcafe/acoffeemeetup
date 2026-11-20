@@ -421,6 +421,8 @@ export const messages: MessageDict = {
   'account.goHome': 'ホームへ戻る',
   'account.profileTitle': '公開プロフィール',
   'account.profileToggleLabel': 'プロフィールを公開する',
+  'account.profileSuspendedHint': 'ACoffee により非公開',
+  'account.profileSuspendedNotice': '審査の結果、公開ページは非公開になりました。現在は再公開できません。誤りだと思われる場合は、ACoffee からのメールに返信してご連絡ください。',
   'account.profileToggleAria': '公開プロフィールの表示切替',
   'account.profilePublicHint': 'acoffee.com/{{username}} で公開されています。',
   'account.profilePrivateHint': 'オフ — プロフィールは非公開です。',

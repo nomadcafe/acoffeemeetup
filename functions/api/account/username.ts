@@ -5,6 +5,7 @@ import { getDb } from '../../_lib/db';
 import { user } from '../../_lib/db/schema';
 import { getSessionUser, jsonError } from '../../_lib/passport';
 import { checkUsernameAvailability } from '../../_lib/username';
+import { notifyProfileReview } from '../../_lib/profileReview';
 
 /* Public username picker is open. Reserved-names policy (admin, coffee,
  * etc.) lives in `checkUsernameAvailability` as a block-list rather than
@@ -15,7 +16,7 @@ const InputSchema = z.object({
   username: z.string().nullable(),
 });
 
-export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) => {
+export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env, waitUntil }) => {
   if (!USERNAMES_PUBLIC) return jsonError('Username picker not yet available', 403);
 
   const sessionUser = await getSessionUser(env, request);
@@ -33,6 +34,10 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) =
   const value = raw === '' ? null : raw;
 
   const db = getDb(env);
+  const [before] = await db
+    .select({ username: user.username })
+    .from(user)
+    .where(eq(user.id, sessionUser.id));
   if (value != null) {
     const check = await checkUsernameAvailability(env, value, sessionUser.id);
     if (!check.available) {
@@ -73,6 +78,11 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) =
       .update(user)
       .set({ username: null, updatedAt: new Date() })
       .where(eq(user.id, sessionUser.id));
+  }
+
+  // Every new or changed handle goes to the admin for review.
+  if (value != null && value !== (before?.username ?? null)) {
+    waitUntil(notifyProfileReview(env, db, request, waitUntil, sessionUser.id, ['handle']));
   }
 
   return Response.json({ username: value });

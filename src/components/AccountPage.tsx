@@ -219,6 +219,7 @@ interface SignedInProps {
     createdAt?: string | Date;
     username?: string | null;
     profilePublic?: boolean;
+    profileSuspendedAt?: string | Date | null;
     image?: string | null;
     displayName?: string | null;
     bio?: string | null;
@@ -738,6 +739,7 @@ function SignedInAccountPage({
           initial={
             (sessionUser as { profilePublic?: boolean }).profilePublic === true
           }
+          suspended={!!sessionUser.profileSuspendedAt}
         />
 
         <AvatarCard initialImage={(sessionUser as { image?: string | null }).image ?? null} />

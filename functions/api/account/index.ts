@@ -11,6 +11,7 @@ import { getDb } from '../../_lib/db';
 import { user, featuredCafes } from '../../_lib/db/schema';
 import { getSessionUser, jsonError, jsonErrorCoded } from '../../_lib/passport';
 import { cleanProfileText, profileTextIssue } from '../../../src/utils/profileText';
+import { notifyProfileReview, type ReviewChange } from '../../_lib/profileReview';
 import {
   GoogleMapsError,
   fetchPlaceWebsiteUri,
@@ -253,7 +254,7 @@ const PatchSchema = z.object({
  *  socialLinks is a small array of {platform, handle}. Profile publish requires
  *  a username to exist already — there'd be no URL to host the page at
  *  otherwise. */
-export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) => {
+export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env, waitUntil }) => {
   const sessionUser = await getSessionUser(env, request);
   if (!sessionUser) return jsonError('Unauthorized', 401);
 
@@ -265,12 +266,24 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) =
   }
 
   const db = getDb(env);
+  // Current public-facing state: needed for the publish gate, the
+  // suspension gate, and to tell the admin what actually changed.
+  const [before] = await db
+    .select({
+      username: user.username,
+      profilePublic: user.profilePublic,
+      profileSuspendedAt: user.profileSuspendedAt,
+      displayName: user.displayName,
+      bio: user.bio,
+      socialLinks: user.socialLinks,
+    })
+    .from(user)
+    .where(eq(user.id, sessionUser.id));
   if (input.profilePublic === true) {
-    const [row] = await db
-      .select({ username: user.username })
-      .from(user)
-      .where(eq(user.id, sessionUser.id));
-    if (!row?.username) return jsonError('Set a username before publishing', 400);
+    if (!before?.username) return jsonError('Set a username before publishing', 400);
+    if (before.profileSuspendedAt) {
+      return jsonErrorCoded('This profile has been taken down by ACoffee', 'profile_suspended', 403);
+    }
   }
 
   const patch: Record<string, unknown> = { updatedAt: new Date() };
@@ -417,6 +430,24 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) =
 
   if (statements.length > 0) {
     await db.batch(statements as [BatchStmt, ...BatchStmt[]]);
+  }
+
+  // Post-publication review: tell the admin when a profile goes public, or
+  // when a public profile's visible text / links change.
+  if (before) {
+    const nowPublic = (patch.profilePublic as boolean | undefined) ?? before.profilePublic;
+    const changes: ReviewChange[] = [];
+    if (nowPublic && !before.profilePublic) changes.push('published');
+    if (nowPublic && before.profilePublic) {
+      if ('displayName' in patch && patch.displayName !== before.displayName) changes.push('displayName');
+      if ('bio' in patch && patch.bio !== before.bio) changes.push('bio');
+      if ('socialLinks' in patch && patch.socialLinks !== (before.socialLinks ?? '[]')) {
+        changes.push('socialLinks');
+      }
+    }
+    if (changes.length > 0) {
+      waitUntil(notifyProfileReview(env, db, request, waitUntil, sessionUser.id, changes));
+    }
   }
 
   return Response.json({ ok: true });

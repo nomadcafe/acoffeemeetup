@@ -417,6 +417,8 @@ export const messages: MessageDict = {
   'account.goHome': '返回首页',
   'account.profileTitle': '公开资料页',
   'account.profileToggleLabel': '公开我的资料页',
+  'account.profileSuspendedHint': '已被 ACoffee 下线',
+  'account.profileSuspendedNotice': '你的公开主页经审核后已被下线，目前无法重新公开。如果你认为这是误判，可以回复任意一封 ACoffee 邮件联系我们。',
   'account.profileToggleAria': '切换公开资料页可见性',
   'account.profilePublicHint': '可通过 acoffee.com/{{username}} 访问。',
   'account.profilePrivateHint': '关闭 — 你的资料页是私密的。',
