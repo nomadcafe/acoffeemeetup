@@ -9,6 +9,8 @@ import { SkipToContent } from './SkipToContent';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { GithubLink } from './GithubLink';
 import { SocialIcon } from './SocialIcon';
+import { ReportProfile } from './profile/ReportProfile';
+import reportStyles from './profile/ReportProfile.module.css';
 import { SyncIndicator } from './SyncIndicator';
 import { avatarGradient } from '../utils/avatarGradient';
 import type { ResolvedSocialLink } from '../utils/socialPlatforms';
@@ -368,6 +370,10 @@ function ProfileBody({ profile }: { profile: PublicProfile }) {
           </ol>
         </section>
       ) : null}
+
+      <div className={reportStyles.footer}>
+        <ReportProfile username={profile.username} />
+      </div>
     </>
   );
 }
