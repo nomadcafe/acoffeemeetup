@@ -22,58 +22,136 @@ export const USERNAME_REGEX = /^[a-z][a-z0-9_-]{2,29}$/;
  *      generic high-value slugs we want to keep for partnerships,
  *      Pro-tier upgrades, or our own future surfaces.
  *
- * Only 4+ char names are listed: the public AccountPage form rejects
- * anything shorter, so `api`/`app`/`me`/`pro`/`www` etc. are already
- * unreachable through normal sign-up. Add new names alphabetically and
- * keep them ≥4 chars so the list stays focused on real risks.
+ *   3. Impersonation — official / support / security / acoffee etc., so
+ *      nobody can stand up `acoffee.com/acoffee-official`-style pages
+ *      that read as us. Exact match, plus any slug containing "acoffee"
+ *      (see validateUsername).
+ *
+ * The AccountPage form rejects names under 4 chars, but the API accepts
+ * 3, so the few 3-char route / brand slugs (api, www, pro…) are listed
+ * too. Keep the list alphabetical.
  *
  * Users hitting a reserved name see a "this slug is reserved — please
  * contact us if you need it" message rather than a flat "taken" error,
  * so the gating reads as intentional.
  */
 export const RESERVED_USERNAMES = new Set([
+  'about',
+  'abuse',
   'account',
+  'acoffee',
+  'acoffeemeetup',
   'admin',
   'administrator',
+  'api',
+  'app',
+  'assets',
   'auth',
+  'billing',
+  'blog',
   'blue',
   'booking',
   'bookings',
   'cafe',
   'cafes',
   'cake',
+  'callback',
+  'cancel',
+  'careers',
   'cash',
   'casino',
+  'cdn',
   'chain',
   'coffee',
+  'coffeemeetup',
+  'confirm',
+  'contact',
+  'cron',
+  'dashboard',
+  'dev',
+  'docs',
   'domain',
+  'email',
+  'explore',
+  'faq',
+  'founder',
   'free',
   'game',
   'hello',
   'help',
+  'hostmaster',
+  'inbox',
+  'info',
+  'invite',
+  'jobs',
+  'legal',
   'link',
   'login',
   'logout',
   'love',
+  'mail',
+  'manifest',
   'market',
+  'meetup',
+  'messages',
+  'mod',
+  'moderator',
   'money',
+  'news',
+  'no-reply',
+  'noreply',
+  'notifications',
+  'oauth',
+  'official',
+  'ops',
+  'owner',
+  'partners',
   'passport',
   'payment',
   'play',
+  'postmaster',
+  'press',
+  'pricing',
+  'privacy',
+  'pro',
+  'profile',
+  'profiles',
+  'proposal',
+  'proposals',
+  'report',
+  'robots',
+  'root',
+  'search',
+  'security',
   'settings',
+  'setup',
+  'share',
   'shop',
   'show',
   'signin',
   'signout',
   'signup',
+  'sitemap',
   'space',
+  'staff',
+  'static',
+  'status',
   'support',
+  'system',
+  'team',
+  'terms',
   'tour',
   'travel',
+  'updatelog',
   'updates',
+  'user',
+  'users',
+  'verified',
+  'verify',
   'webmaster',
   'white',
   'world',
+  'www',
 ]);
 
 export type UsernameValidation =
@@ -83,6 +161,9 @@ export type UsernameValidation =
 export function validateUsername(value: string): UsernameValidation {
   if (!USERNAME_REGEX.test(value)) return { ok: false, reason: 'invalid' };
   if (RESERVED_USERNAMES.has(value)) return { ok: false, reason: 'reserved' };
+  // Any slug carrying our brand (acoffee-support, the-acoffee-team…) would
+  // read as official, so the brand is blocked as a substring, not just exact.
+  if (value.includes('acoffee')) return { ok: false, reason: 'reserved' };
   return { ok: true };
 }
 
