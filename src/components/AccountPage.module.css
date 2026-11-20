@@ -830,16 +830,92 @@
 }
 
 @media (max-width: 480px) {
+  /* Day name on top, "start → end" on one line under it — one compact
+     block per day instead of every field on its own line. */
   .dayRow {
-    grid-template-columns: 1fr;
-    gap: 0.4rem;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 0.35rem 0.4rem;
     padding: 0.55rem 0.65rem;
     background: var(--ac-page-bg);
     border-radius: 8px;
   }
-  .timeSep {
-    display: none;
+  .dayToggle {
+    grid-column: 1 / -1;
   }
+  .dayRow .timeInput {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* ---------- booking readiness + presets ---------- */
+
+.bookingReady {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #14532d;
+  font-size: 0.9rem;
+}
+
+.bookingMissing {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #78350f;
+  font-size: 0.9rem;
+}
+
+.bookingMissingTitle {
+  margin: 0 0 0.3rem;
+  font-weight: 600;
+}
+
+.bookingMissingList {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.bookingMissingList a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.addressWrap {
+  position: relative;
+}
+
+.presetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0.35rem;
+}
+
+.presetChip {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--ac-border-strong);
+  border-radius: 999px;
+  background: var(--ac-surface);
+  color: var(--ac-text);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.presetChip:hover {
+  border-color: var(--ac-accent);
+  color: var(--ac-accent);
+}
+
+.presetChip:focus-visible {
+  outline: 2px solid var(--ac-focus-ring, var(--ac-accent));
+  outline-offset: 2px;
 }
 
 /* ---------- visibility toggle ---------- */

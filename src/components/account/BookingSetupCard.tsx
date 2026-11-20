@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useI18n } from '../../context/I18nContext';
+import { useAddressAutocomplete } from '../../hooks/useAddressAutocomplete';
 import { track } from '../../utils/analytics';
 import styles from '../AccountPage.module.css';
 import { type Availability, type DaySlot, type Weekday, WEEKDAYS } from './availability';
+import { scrollToSection } from './sections';
 import {
   type StatusBanner,
   useAccountRefresh,
@@ -20,7 +22,22 @@ interface BookingSetupProps {
   /** Whether the user has published their profile. The link only works if
    *  profile_public=true, so we hide the share row otherwise. */
   profilePublic: boolean;
+  /** IANA zone the weekly hours are interpreted in (derived server-side
+   *  from the saved home base, else the browser's zone at save time). */
+  timezone: string | null;
 }
+
+/** One-tap starting points; each only touches the days it names. */
+const PRESETS: ReadonlyArray<{
+  key: 'weekdayAfternoons' | 'weekdayLunch' | 'weekends';
+  days: readonly Weekday[];
+  start: string;
+  end: string;
+}> = [
+  { key: 'weekdayAfternoons', days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '14:00', end: '17:00' },
+  { key: 'weekdayLunch', days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '12:00', end: '13:30' },
+  { key: 'weekends', days: ['sat', 'sun'], start: '10:00', end: '16:00' },
+];
 
 /**
  * Phase 2.A: organizer-side booking config. Address is one endpoint of the
@@ -34,9 +51,10 @@ export function BookingSetupCard({
   initialAvailability,
   username,
   profilePublic,
+  timezone,
 }: BookingSetupProps) {
   const refreshAccount = useAccountRefresh();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [address, setAddress] = useState(initialAddress);
   const [days, setDays] = useState<Availability>(initialAvailability);
   const bookingKey = (a: string, d: Availability) => JSON.stringify([a.trim(), d]);
@@ -73,6 +91,46 @@ export function BookingSetupCard({
   function setDay(day: Weekday, patch: Partial<DaySlot>) {
     setDays((prev) => ({ ...prev, [day]: { ...prev[day], ...patch } }));
   }
+
+  function applyPreset(preset: (typeof PRESETS)[number]) {
+    setDays((prev) => {
+      const next = { ...prev };
+      for (const d of preset.days) next[d] = { enabled: true, start: preset.start, end: preset.end };
+      return next;
+    });
+  }
+
+  /** Copy the first open day's hours onto every other open day. */
+  const firstOpen = WEEKDAYS.find((d) => days[d].enabled);
+  const canUnify =
+    firstOpen !== undefined &&
+    WEEKDAYS.some(
+      (d) =>
+        days[d].enabled &&
+        (days[d].start !== days[firstOpen].start || days[d].end !== days[firstOpen].end),
+    );
+  function unifyHours() {
+    if (!firstOpen) return;
+    const { start, end } = days[firstOpen];
+    setDays((prev) => {
+      const next = { ...prev };
+      for (const d of WEEKDAYS) if (next[d].enabled) next[d] = { ...next[d], start, end };
+      return next;
+    });
+  }
+
+  const addressAc = useAddressAutocomplete(locale === 'zh' ? 'zh-CN' : locale);
+
+  // What still stands between the user and a working booking page. Based
+  // on saved state (props), not the unsaved draft — it describes what
+  // visitors can do right now.
+  const savedHasDay = WEEKDAYS.some((d) => initialAvailability[d].enabled);
+  const missing: Array<{ key: string; target: string }> = [
+    ...(username ? [] : [{ key: 'account.bookingNeedsUsername', target: 'account-username' }]),
+    ...(profilePublic ? [] : [{ key: 'account.bookingNeedsPublic', target: 'account-visibility' }]),
+    ...(initialAddress.trim() ? [] : [{ key: 'account.bookingNeedsAddress', target: 'booking-address' }]),
+    ...(savedHasDay ? [] : [{ key: 'account.bookingNeedsHours', target: 'booking-hours' }]),
+  ];
 
   // A day is "valid" if it's disabled OR start < end. The Save button blocks
   // on any inverted range so the server doesn't have to bounce a 400.
@@ -132,7 +190,40 @@ export function BookingSetupCard({
         {t('account.bookingHint')}
       </p>
 
-      {bookingLink ? (
+      {missing.length === 0 ? (
+        <p className={styles.bookingReady} role="status">
+          {t('account.bookingOpen')}
+        </p>
+      ) : (
+        <div className={styles.bookingMissing} role="status">
+          <p className={styles.bookingMissingTitle}>{t('account.bookingNotOpen')}</p>
+          <ul className={styles.bookingMissingList}>
+            {missing.map((m) => (
+              <li key={m.key}>
+                <a
+                  href={`#${m.target}`}
+                  onClick={(e) => {
+                    if (m.target.startsWith('account-')) {
+                      if (scrollToSection(m.target)) e.preventDefault();
+                    } else {
+                      const el = document.getElementById(m.target);
+                      if (el) {
+                        e.preventDefault();
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.focus({ preventScroll: true });
+                      }
+                    }
+                  }}
+                >
+                  {t(m.key)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {bookingLink && missing.length === 0 ? (
         <div className={styles.bookingLinkRow}>
           <span className={styles.bookingLinkLabel}>{t('account.bookingLinkLabel')}</span>
           <a
@@ -157,21 +248,83 @@ export function BookingSetupCard({
         </div>
       ) : null}
 
-      <label className={styles.fieldGroup}>
-        <span className={styles.fieldLabel}>{t('account.homeBaseLabel')}</span>
-        <input
-          type="text"
-          className={styles.usernameInput}
-          maxLength={200}
-          placeholder={t('account.homeBasePlaceholder')}
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
-        <span className={styles.usernameHint}>{t('account.homeBaseHint')}</span>
-      </label>
-
       <div className={styles.fieldGroup}>
+        <label className={styles.fieldLabel} htmlFor="booking-address">
+          {t('account.homeBaseLabel')}
+        </label>
+        <div className={styles.addressWrap}>
+          <input
+            id="booking-address"
+            type="text"
+            className={styles.usernameInput}
+            maxLength={200}
+            placeholder={t('account.homeBasePlaceholder')}
+            value={address}
+            autoComplete="off"
+            aria-autocomplete="list"
+            aria-expanded={addressAc.suggestions.length > 0}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              addressAc.query(e.target.value);
+            }}
+            onBlur={() => window.setTimeout(() => addressAc.clear(), 150)}
+          />
+          {addressAc.suggestions.length > 0 ? (
+            <ul className={styles.featuredCafeSuggestions} role="listbox">
+              {addressAc.suggestions.map((sug, i) => {
+                const text = sug.placePrediction?.text.text ?? '';
+                if (!text) return null;
+                return (
+                  <li key={`${i}-${text}`} role="option" aria-selected={false}>
+                    <button
+                      type="button"
+                      className={styles.featuredCafeSuggestion}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={async () => {
+                        const picked = await addressAc.pick(sug);
+                        if (picked) setAddress(picked);
+                      }}
+                    >
+                      {text}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
+        <span className={styles.usernameHint}>{t('account.homeBaseHint')}</span>
+      </div>
+
+      <div className={styles.fieldGroup} id="booking-hours" tabIndex={-1}>
         <span className={styles.fieldLabel}>{t('account.availabilityLabel')}</span>
+        {timezone ? (
+          <span className={styles.usernameHint} style={{ marginTop: 0 }}>
+            {t(
+              initialAddress.trim()
+                ? 'account.availabilityTimezone'
+                : 'account.availabilityTimezoneBrowser',
+              { zone: timezone },
+            )}
+          </span>
+        ) : null}
+        <div className={styles.presetRow}>
+          {PRESETS.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              className={styles.presetChip}
+              onClick={() => applyPreset(p)}
+            >
+              {t(`account.bookingPreset.${p.key}`)}
+            </button>
+          ))}
+          {canUnify ? (
+            <button type="button" className={styles.presetChip} onClick={unifyHours}>
+              {t('account.bookingUnifyHours', { day: t(`account.weekday.${firstOpen}`) })}
+            </button>
+          ) : null}
+        </div>
         {WEEKDAYS.map((d) => {
           const slot = days[d];
           const inverted = slot.enabled && slot.start >= slot.end;

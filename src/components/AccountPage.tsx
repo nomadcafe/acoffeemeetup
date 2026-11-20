@@ -226,6 +226,7 @@ interface SignedInProps {
     socialLinks?: string;
     homeBaseAddress?: string | null;
     availabilitySlots?: string;
+    timezone?: string | null;
     busyCalendarIcsUrl?: string | null;
     busyCalendarSyncedAt?: string | Date | number | null;
     busyCalendarLastError?: string | null;
@@ -781,6 +782,7 @@ function SignedInAccountPage({
           )}
           username={sessionUser.username ?? ''}
           profilePublic={!!sessionUser.profilePublic}
+          timezone={sessionUser.timezone ?? null}
         />
 
         <CalendarSyncCard
