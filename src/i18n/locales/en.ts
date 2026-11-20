@@ -538,6 +538,8 @@ export const messages: MessageDict = {
   'account.featuredCafeUnverifiedHint': "Unverified — sign in with the café's domain email to auto-verify, or leave as-is.",
   'account.bookingTitle': 'Coffee bookings',
   'account.bookingHint': 'When someone visits acoffee.com/<your-name>, they can pick a time and the system finds a café between you. Set your home base + weekly hours below.',
+  'account.bookingTeaser': "Let people book a coffee with you from your public page — you set your home base and the hours you're free, and we suggest a café between you.",
+  'account.bookingTeaserCta': 'Set up bookings',
   'account.bookingLinkLabel': 'Your link',
   'account.bookingLinkCopy': 'Copy',
   'account.bookingLinkCopied': 'Copied ✓',

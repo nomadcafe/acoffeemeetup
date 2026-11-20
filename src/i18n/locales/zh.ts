@@ -520,6 +520,8 @@ export const messages: MessageDict = {
   'account.featuredCafeUnverifiedHint': '未认证 —— 用店家邮箱域名登录可自动认证，否则保留即可。',
   'account.bookingTitle': '咖啡预约',
   'account.bookingHint': '别人打开 acoffee.com/<你的用户名> 选时间后，系统会推荐你们俩之间的咖啡店。在下面设置你的常驻地址和每周可约时间。',
+  'account.bookingTeaser': '让别人通过你的公开主页约你喝咖啡：设置常驻地址和空闲时间，我们会推荐你们之间的咖啡店。',
+  'account.bookingTeaserCta': '设置预约',
   'account.bookingLinkLabel': '预约链接',
   'account.bookingLinkCopy': '复制',
   'account.bookingLinkCopied': '已复制 ✓',

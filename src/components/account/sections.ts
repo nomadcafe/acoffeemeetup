@@ -61,6 +61,9 @@ export const SECTION_HASH_ALIASES: Record<string, string> = {
   calendar: 'account-calendar',
 };
 
+/** The optional booking group, collapsed until the user opts in. */
+export const BOOKING_SECTION_IDS: ReadonlyArray<string> = ['account-booking', 'account-calendar'];
+
 export function scrollToSection(id: string, behavior: ScrollBehavior = 'smooth') {
   const el = document.getElementById(id);
   if (!el) return false;

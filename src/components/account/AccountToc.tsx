@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '../../context/I18nContext';
 import styles from '../AccountPage.module.css';
 import {
-  scrollToSection,
   type SectionStatusMap,
   TOC_GROUPS,
   TOC_IDS,
@@ -57,9 +56,12 @@ function groupProgress(g: TocGroup, status: SectionStatusMap) {
 export function AccountToc({
   status,
   unsaved,
+  onNavigate,
 }: {
   status: SectionStatusMap;
   unsaved: ReadonlySet<string>;
+  /** Scroll to a section (the page may need to expand it first). */
+  onNavigate: (id: string) => boolean;
 }) {
   const { t } = useI18n();
   const activeId = useScrollSpy(TOC_IDS);
@@ -96,7 +98,7 @@ export function AccountToc({
                         href={`#${s.id}`}
                         aria-current={activeId === s.id ? 'location' : undefined}
                         onClick={(e) => {
-                          if (scrollToSection(s.id)) e.preventDefault();
+                          if (onNavigate(s.id)) e.preventDefault();
                         }}
                       >
                         <span>{t(s.labelKey)}</span>
@@ -132,7 +134,7 @@ export function AccountToc({
               }`}
               aria-current={activeGroup === g.key ? 'location' : undefined}
               onClick={(e) => {
-                if (scrollToSection(g.items[0].id)) e.preventDefault();
+                if (onNavigate(g.items[0].id)) e.preventDefault();
               }}
             >
               {t(g.labelKey)}

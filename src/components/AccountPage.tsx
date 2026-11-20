@@ -29,6 +29,7 @@ import { DeleteAccountModal } from './account/DeleteAccountModal';
 import { FeaturedCafesCard } from './account/FeaturedCafesCard';
 import { ProfileVisibilityCard } from './account/ProfileVisibilityCard';
 import {
+  BOOKING_SECTION_IDS,
   scrollToSection,
   SECTION_HASH_ALIASES,
   type SectionStatusMap,
@@ -266,6 +267,34 @@ function SignedInAccountPage({
   // paint. Mount-time effect below consumes this.
   const usernameInputRef = useRef<HTMLInputElement>(null);
 
+  // Bookings are optional, so for someone who has never touched them the
+  // booking + calendar cards collapse into one short invitation. Anything
+  // already set up (or a deep link into that group) keeps them open.
+  const bookingTouched =
+    !!sessionUser.homeBaseAddress?.trim() ||
+    WEEKDAYS.some((d) => parseInitialAvailability(sessionUser.availabilitySlots)[d].enabled) ||
+    !!sessionUser.busyCalendarIcsUrl?.trim();
+  const [bookingExpanded, setBookingExpanded] = useState(() => {
+    const raw = decodeURIComponent(window.location.hash.slice(1));
+    const id = SECTION_HASH_ALIASES[raw] ?? raw;
+    return bookingTouched || BOOKING_SECTION_IDS.includes(id);
+  });
+  /** Scroll to a section, expanding the booking group first if needed. */
+  const goToSection = useCallback(
+    (id: string, behavior: ScrollBehavior = 'smooth'): boolean => {
+      if (BOOKING_SECTION_IDS.includes(id) && !bookingExpanded) {
+        setBookingExpanded(true);
+        // Two frames: one for React to render the cards, one for layout.
+        window.requestAnimationFrame(() =>
+          window.requestAnimationFrame(() => scrollToSection(id, behavior)),
+        );
+        return true;
+      }
+      return scrollToSection(id, behavior);
+    },
+    [bookingExpanded],
+  );
+
   // Honour `/account#<section>` deep links. The cards only exist once the
   // session has loaded, so the browser's own jump-to-anchor on page load
   // finds nothing — redo it after the first paint.
@@ -276,6 +305,7 @@ function SignedInAccountPage({
     if (!TOC_IDS.includes(id)) return;
     const frame = window.requestAnimationFrame(() => scrollToSection(id, 'auto'));
     return () => window.cancelAnimationFrame(frame);
+    // Mount-only: later navigation goes through goToSection.
   }, []);
 
   // Honour `?focus=username` from the home profile-slide CTA callback URL:
@@ -547,10 +577,16 @@ function SignedInAccountPage({
     'account-visibility': sessionUser.profilePublic ? 'done' : 'todo',
     'account-avatar': sessionUser.image ? 'done' : 'todo',
     'account-basic': sessionUser.displayName?.trim() || sessionUser.bio?.trim() ? 'done' : 'todo',
-    'account-booking':
-      sessionUser.homeBaseAddress?.trim() && WEEKDAYS.some((d) => bookingAvailability[d].enabled)
-        ? 'done'
-        : 'todo',
+    // Collapsed = the user hasn't opted into bookings: no nagging dot.
+    ...(bookingExpanded
+      ? {
+          'account-booking':
+            sessionUser.homeBaseAddress?.trim() &&
+            WEEKDAYS.some((d) => bookingAvailability[d].enabled)
+              ? ('done' as const)
+              : ('todo' as const),
+        }
+      : {}),
   };
 
   // Sections with unsaved edits, reported by the cards via DirtyContext.
@@ -629,7 +665,7 @@ function SignedInAccountPage({
         </div>
 
         <div className={styles.layout}>
-          <AccountToc status={sectionStatus} unsaved={unsavedIds} />
+          <AccountToc status={sectionStatus} unsaved={unsavedIds} onNavigate={goToSection} />
           <div className={styles.content}>
 
         {/* Summary only once there's something in it — a brand-new account
@@ -781,25 +817,45 @@ function SignedInAccountPage({
 
         <FeaturedCafesCard />
 
-        <BookingSetupCard
-          initialAddress={
-            (sessionUser as { homeBaseAddress?: string | null }).homeBaseAddress ?? ''
-          }
-          initialAvailability={parseInitialAvailability(
-            (sessionUser as { availabilitySlots?: string }).availabilitySlots,
-          )}
-          username={sessionUser.username ?? ''}
-          profilePublic={!!sessionUser.profilePublic}
-          timezone={sessionUser.timezone ?? null}
-        />
+        {bookingExpanded ? (
+          <>
+            <BookingSetupCard
+              initialAddress={
+                (sessionUser as { homeBaseAddress?: string | null }).homeBaseAddress ?? ''
+              }
+              initialAvailability={parseInitialAvailability(
+                (sessionUser as { availabilitySlots?: string }).availabilitySlots,
+              )}
+              username={sessionUser.username ?? ''}
+              profilePublic={!!sessionUser.profilePublic}
+              timezone={sessionUser.timezone ?? null}
+            />
 
-        <CalendarSyncCard
-          initialUrl={sessionUser.busyCalendarIcsUrl ?? ''}
-          initialSyncedAt={msFromMaybe(sessionUser.busyCalendarSyncedAt)}
-          initialLastError={sessionUser.busyCalendarLastError ?? null}
-          initialLastErrorAt={msFromMaybe(sessionUser.busyCalendarLastErrorAt)}
-          bookingOpen={sectionStatus['account-booking'] === 'done'}
-        />
+            <CalendarSyncCard
+              initialUrl={sessionUser.busyCalendarIcsUrl ?? ''}
+              initialSyncedAt={msFromMaybe(sessionUser.busyCalendarSyncedAt)}
+              initialLastError={sessionUser.busyCalendarLastError ?? null}
+              initialLastErrorAt={msFromMaybe(sessionUser.busyCalendarLastErrorAt)}
+              bookingOpen={sectionStatus['account-booking'] === 'done'}
+            />
+          </>
+        ) : (
+          <section id="account-booking" className={styles.card} aria-label={t('account.bookingTitle')}>
+            <h2 className={styles.cardTitle}>{t('account.bookingTitle')}</h2>
+            <p className={styles.usernameHint} style={{ marginTop: 0 }}>
+              {t('account.bookingTeaser')}
+            </p>
+            <div className={styles.formRow}>
+              <button
+                type="button"
+                className={styles.saveButton}
+                onClick={() => goToSection('account-booking')}
+              >
+                {t('account.bookingTeaserCta')}
+              </button>
+            </div>
+          </section>
+        )}
 
 
         <section id="account-identity" className={styles.card} aria-label={t('account.identityTitle')}>

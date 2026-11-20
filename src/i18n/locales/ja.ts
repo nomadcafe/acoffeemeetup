@@ -524,6 +524,8 @@ export const messages: MessageDict = {
   'account.featuredCafeUnverifiedHint': '未認証 — カフェのドメインのメールでサインインすると自動認証、そのままでも OK。',
   'account.bookingTitle': 'コーヒー予約',
   'account.bookingHint': 'acoffee.com/<あなたの名前> を訪れた人が時間を選ぶと、システムが二人の中間にあるカフェを提案します。下で拠点と毎週の時間帯を設定してください。',
+  'account.bookingTeaser': '公開ページからコーヒーの予約を受け付けられます。拠点と空いている時間を設定すると、お互いの間にあるカフェを提案します。',
+  'account.bookingTeaserCta': '予約を設定する',
   'account.bookingLinkLabel': '予約リンク',
   'account.bookingLinkCopy': 'コピー',
   'account.bookingLinkCopied': 'コピーしました ✓',
