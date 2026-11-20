@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   getPlatform,
   parseSocialHandle,
+  platformName,
   SOCIAL_LINKS_MAX,
   SOCIAL_PLATFORMS,
   type SocialPlatformId,
@@ -30,7 +31,7 @@ const LINK_HANDLE_MAX = 300;
 
 export function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialLinksProps) {
   const refreshAccount = useAccountRefresh();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [links, setLinks] = useState<SocialLinkDraft[]>(initialSocialLinks);
   const [showLinks, setShowLinks] = useState(initialShowSocialLinks);
   const [busy, setBusy] = useState(false);
@@ -169,7 +170,7 @@ export function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: 
               >
                 {SOCIAL_PLATFORMS.map((p) => (
                   <option key={p.id} value={p.id} disabled={usedElsewhere.has(p.id)}>
-                    {p.name}
+                    {platformName(p, locale)}
                   </option>
                 ))}
               </select>

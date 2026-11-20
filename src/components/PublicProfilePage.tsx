@@ -13,7 +13,7 @@ import { ReportProfile } from './profile/ReportProfile';
 import reportStyles from './profile/ReportProfile.module.css';
 import { SyncIndicator } from './SyncIndicator';
 import { avatarGradient } from '../utils/avatarGradient';
-import type { ResolvedSocialLink } from '../utils/socialPlatforms';
+import { resolveSocialLink, type ResolvedSocialLink } from '../utils/socialPlatforms';
 import { safeHref } from '../utils/safeHref';
 import styles from './PublicProfilePage.module.css';
 
@@ -214,7 +214,11 @@ function ProfileSkeleton() {
 function ProfileBody({ profile }: { profile: PublicProfile }) {
   const { t, locale } = useI18n();
   const initialChar = (profile.displayName ?? profile.username)[0]?.toUpperCase() ?? '?';
-  const safeSocialLinks = profile.socialLinks.filter((l) => safeHref(l.url) !== null);
+  // Server resolves names in the native brand language; re-resolve so the
+  // label follows the viewer's locale (小红书 → RedNote on /en).
+  const safeSocialLinks = profile.socialLinks
+    .filter((l) => safeHref(l.url) !== null)
+    .map((l) => resolveSocialLink(l, locale) ?? l);
 
   return (
     <>

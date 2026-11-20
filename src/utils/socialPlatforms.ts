@@ -27,8 +27,11 @@ export type SocialPlatformId =
 
 interface PlatformDef {
   id: SocialPlatformId;
-  /** Brand name as shown on the profile (brand names aren't translated). */
+  /** Brand name in the platform's own market (the default label). */
   name: string;
+  /** Localized brand name, for platforms whose native name isn't Latin
+   *  script (e.g. 小红书 reads as "RedNote" to an English visitor). */
+  names?: Partial<Record<SocialLocale, string>>;
   /** Example shown as the input placeholder. */
   example: string;
   /** Valid handle / id, after stripping a leading "@". */
@@ -39,12 +42,17 @@ interface PlatformDef {
   fromPath: RegExp;
   /** Canonical profile URL for a validated handle. */
   url: (h: string) => string;
-  /** How the handle is displayed (e.g. with a leading @). */
-  display: (h: string) => string;
+  /** How the handle is displayed (e.g. with a leading @). `name` is the
+   *  already-localized brand name, for platforms whose ids are opaque. */
+  display: (h: string, name: string) => string;
 }
+
+/** Mirrors i18n `Locale`; kept local so this module stays import-free. */
+export type SocialLocale = 'en' | 'ja' | 'zh';
 
 const at = (h: string) => `@${h}`;
 const plain = (h: string) => h;
+const brand = (_h: string, name: string) => name;
 
 export const SOCIAL_PLATFORMS: readonly PlatformDef[] = [
   {
@@ -140,26 +148,29 @@ export const SOCIAL_PLATFORMS: readonly PlatformDef[] = [
   {
     id: 'xiaohongshu',
     name: '小红书',
+    names: { en: 'RedNote', ja: '小紅書' },
     example: 'https://www.xiaohongshu.com/user/profile/…',
     handle: /^[0-9a-f]{24}$/,
     hosts: ['xiaohongshu.com'],
     fromPath: /^\/user\/profile\/([0-9a-f]{24})/,
     url: (h) => `https://www.xiaohongshu.com/user/profile/${h}`,
-    display: () => '小红书',
+    display: brand,
   },
   {
     id: 'weibo',
     name: '微博',
+    names: { en: 'Weibo', ja: 'Weibo' },
     example: 'https://weibo.com/u/1234567890',
     handle: /^\d{5,12}$/,
     hosts: ['weibo.com', 'weibo.cn'],
     fromPath: /^\/(?:u\/)?(\d{5,12})(?:[/?#]|$)/,
     url: (h) => `https://weibo.com/u/${h}`,
-    display: () => '微博',
+    display: brand,
   },
   {
     id: 'bilibili',
     name: '哔哩哔哩',
+    names: { en: 'Bilibili', ja: 'ビリビリ' },
     example: 'https://space.bilibili.com/12345678',
     handle: /^\d{1,12}$/,
     hosts: ['space.bilibili.com'],
@@ -170,12 +181,13 @@ export const SOCIAL_PLATFORMS: readonly PlatformDef[] = [
   {
     id: 'douyin',
     name: '抖音',
+    names: { en: 'Douyin', ja: 'Douyin' },
     example: 'https://www.douyin.com/user/…',
     handle: /^[A-Za-z0-9_-]{10,100}$/,
     hosts: ['douyin.com'],
     fromPath: /^\/user\/([A-Za-z0-9_-]{10,100})/,
     url: (h) => `https://www.douyin.com/user/${h}`,
-    display: () => '抖音',
+    display: brand,
   },
 ];
 
@@ -192,6 +204,11 @@ export const SOCIAL_LINKS_MAX = 5;
 
 export function getPlatform(id: string): PlatformDef | undefined {
   return BY_ID.get(id as SocialPlatformId);
+}
+
+/** Platform label for `locale`; falls back to the native brand name. */
+export function platformName(p: PlatformDef, locale?: SocialLocale): string {
+  return (locale && p.names?.[locale]) || p.name;
 }
 
 /**
@@ -233,10 +250,14 @@ export interface ResolvedSocialLink extends SocialLinkValue {
   display: string;
 }
 
-export function resolveSocialLink(l: SocialLinkValue): ResolvedSocialLink | null {
+export function resolveSocialLink(
+  l: SocialLinkValue,
+  locale?: SocialLocale,
+): ResolvedSocialLink | null {
   const p = getPlatform(l.platform);
   if (!p || !p.handle.test(l.handle)) return null;
-  return { ...l, url: p.url(l.handle), name: p.name, display: p.display(l.handle) };
+  const name = platformName(p, locale);
+  return { ...l, url: p.url(l.handle), name, display: p.display(l.handle, name) };
 }
 
 /**
