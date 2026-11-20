@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   SOCIAL_LINKS_MAX,
   SOCIAL_PLATFORMS,
@@ -28,17 +28,19 @@ const USERNAME_REGEX = /^[a-z][a-z0-9_-]{3,29}$/;
 const CHECK_DEBOUNCE_MS = 350;
 const DELETE_CONFIRM_PHRASE = 'DELETE';
 
-/* Username picker is now open to everyone — Sprint E shipped public
- * cafe-owner profiles (acoffee.com/<slug>) and gating the slug picker
- * keeps the most-motivated users out. "Reserve good names for Pro" can
- * be revisited later via a small block-list rather than a feature flag. */
-const USERNAMES_PUBLIC = true;
 /** Default time a green success banner sticks before fading on its own.
  *  Long enough to read, short enough that it doesn't haunt the screen
  *  through the next interaction. Used by useAutoDismissOk below. */
 const STATUS_OK_AUTO_DISMISS_MS = 4000;
 
 type StatusBanner = { kind: 'ok' | 'err'; message: string } | null;
+
+/** Cards call this after a successful save so the session — and with it the
+ *  sidebar's setup-progress marks — reflects the new server state. */
+const AccountRefreshContext = createContext<() => void>(() => {});
+function useAccountRefresh(): () => void {
+  return useContext(AccountRefreshContext);
+}
 
 /**
  * Drop a `kind:'ok'` status banner after a short delay. Centralised so
@@ -236,6 +238,7 @@ interface SignedInProps {
     createdAt?: string | Date;
     username?: string | null;
     profilePublic?: boolean;
+    image?: string | null;
     displayName?: string | null;
     bio?: string | null;
     socialLinks?: string;
@@ -279,6 +282,18 @@ function SignedInAccountPage({
   // landing can scroll it into view and put the cursor in it on first
   // paint. Mount-time effect below consumes this.
   const usernameInputRef = useRef<HTMLInputElement>(null);
+
+  // Honour `/account#<section>` deep links. The cards only exist once the
+  // session has loaded, so the browser's own jump-to-anchor on page load
+  // finds nothing — redo it after the first paint.
+  useEffect(() => {
+    const raw = decodeURIComponent(window.location.hash.slice(1));
+    if (!raw) return;
+    const id = SECTION_HASH_ALIASES[raw] ?? raw;
+    if (!TOC_IDS.includes(id)) return;
+    const frame = window.requestAnimationFrame(() => scrollToSection(id, 'auto'));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   // Honour `?focus=username` from the home profile-slide CTA callback URL:
   // scroll the slug card into view, focus the input, then strip the param
@@ -537,8 +552,38 @@ function SignedInAccountPage({
   // refetch hasn't returned yet" gap.
   const effectiveUsername =
     save.kind === 'saved' ? save.value : (sessionUser.username ?? null);
+  const profileHref = effectiveUsername
+    ? buildLocalizedPathname(`/${effectiveUsername}`, locale)
+    : null;
+
+  // Setup progress shown in the sidebar. Derived from the session, which
+  // every card refreshes after a successful save (AccountRefreshContext).
+  const bookingAvailability = parseInitialAvailability(sessionUser.availabilitySlots);
+  const sectionStatus: SectionStatusMap = {
+    'account-username': effectiveUsername ? 'done' : 'todo',
+    'account-visibility': sessionUser.profilePublic ? 'done' : 'todo',
+    'account-avatar': sessionUser.image ? 'done' : 'todo',
+    'account-basic': sessionUser.displayName?.trim() || sessionUser.bio?.trim() ? 'done' : 'todo',
+    'account-booking':
+      sessionUser.homeBaseAddress?.trim() && WEEKDAYS.some((d) => bookingAvailability[d].enabled)
+        ? 'done'
+        : 'todo',
+  };
+
+  const [linkCopied, setLinkCopied] = useState(false);
+  async function copyProfileLink() {
+    if (!effectiveUsername) return;
+    try {
+      await navigator.clipboard.writeText(`https://acoffee.com/${effectiveUsername}`);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      /* clipboard can reject outside secure contexts — the link is still visible */
+    }
+  }
 
   return (
+    <AccountRefreshContext.Provider value={onRefetchSession}>
     <div className={styles.app}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
@@ -566,114 +611,110 @@ function SignedInAccountPage({
         </div>
 
         <div className={styles.layout}>
-          <AccountToc />
+          <AccountToc status={sectionStatus} />
           <div className={styles.content}>
 
-        <section id="account-identity" className={styles.card} aria-label={t('account.identityTitle')}>
-          <h2 className={styles.cardTitle}>{t('account.identityTitle')}</h2>
-          <div className={styles.identityRow}>
-            <span className={styles.identityKey}>{t('account.email')}</span>
-            <span className={styles.identityValue}>{sessionUser.email}</span>
+        <section id="account-stats" className={styles.card} aria-label={t('account.statsTitle')}>
+          <h2 className={styles.cardTitle}>{t('account.statsTitle')}</h2>
+          <div className={styles.statsRow}>
+            <a href={passportHref} className={`${styles.statCell} ${styles.statCellLink}`}>
+              <div className={styles.statCellValue}>{stats.shops}</div>
+              <div className={styles.statCellLabel}>{t('passport.statShops')}</div>
+            </a>
+            <a href={passportHref} className={`${styles.statCell} ${styles.statCellLink}`}>
+              <div className={styles.statCellValue}>{stats.total}</div>
+              <div className={styles.statCellLabel}>{t('passport.statVisits')}</div>
+            </a>
+            <a href={passportHref} className={`${styles.statCell} ${styles.statCellLink}`}>
+              <div className={styles.statCellValue}>{stats.streak}</div>
+              <div className={styles.statCellLabel}>{t('passport.statStreak')}</div>
+            </a>
           </div>
-          {createdAt != null ? (
-            <div className={styles.identityRow}>
-              <span className={styles.identityKey}>{t('account.memberSince')}</span>
-              <span className={styles.identityValue}>{formatAbsoluteDate(createdAt, locale)}</span>
-            </div>
-          ) : null}
         </section>
 
-        {USERNAMES_PUBLIC ? (
-          <section id="account-username" className={styles.card} aria-label={t('account.usernameTitle')}>
-            <h2 className={styles.cardTitle}>{t('account.usernameTitle')}</h2>
-            <form className={styles.usernameForm} onSubmit={handleSubmit}>
-              <div className={styles.usernamePrefix}>
-                <span className={styles.usernamePrefixLabel}>acoffee.com/</span>
-                <input
-                  ref={usernameInputRef}
-                  className={styles.usernameInput}
-                  type="text"
-                  inputMode="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder={t('account.usernamePlaceholder')}
-                  value={draft}
-                  onChange={(e) => {
-                    setDraft(e.target.value);
-                    if (save.kind !== 'idle') setSave({ kind: 'idle' });
-                  }}
-                  aria-invalid={availability.kind === 'unavailable' || undefined}
-                  aria-describedby="username-hint username-availability"
-                />
-              </div>
 
-              <p
-                id="username-availability"
-                className={styles.availability}
-                aria-live="polite"
-                role="status"
-              >
-                {renderAvailability(availability, t)}
-              </p>
+        <section id="account-username" className={styles.card} aria-label={t('account.usernameTitle')}>
+          <h2 className={styles.cardTitle}>{t('account.usernameTitle')}</h2>
+          <form className={styles.usernameForm} onSubmit={handleSubmit}>
+            <div className={styles.usernamePrefix}>
+              <span className={styles.usernamePrefixLabel}>acoffee.com/</span>
+              <input
+                ref={usernameInputRef}
+                className={styles.usernameInput}
+                type="text"
+                inputMode="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder={t('account.usernamePlaceholder')}
+                value={draft}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  if (save.kind !== 'idle') setSave({ kind: 'idle' });
+                }}
+                aria-invalid={availability.kind === 'unavailable' || undefined}
+                aria-describedby="username-hint username-availability"
+              />
+            </div>
 
-              <p className={styles.usernameHint} id="username-hint">
-                {t('account.usernameHint')}
-              </p>
-
-              <div className={styles.formRow}>
-                <button type="submit" className={styles.saveButton} disabled={!canSubmit}>
-                  {save.kind === 'saving'
-                    ? t('account.saving')
-                    : cleared
-                      ? t('account.clearUsername')
-                      : t('account.saveUsername')}
-                </button>
-                {save.kind === 'error' ? (
-                  <p className={styles.errorMsg} role="alert">{save.message}</p>
-                ) : null}
-                {save.kind === 'saved' ? (
-                  <p className={styles.successMsg} role="status">
-                    {save.value
-                      ? t('account.usernameSaved', { username: save.value })
-                      : t('account.usernameCleared')}
-                  </p>
-                ) : null}
-              </div>
-
-              {effectiveUsername ? (
-                <div className={styles.publicLink}>
-                  <span aria-hidden>🔗</span>
-                  <span>
-                    {t('account.publicLink')}{' '}
-                    <span className={styles.publicLinkUrl}>
-                      acoffee.com/{effectiveUsername}
-                    </span>
-                  </span>
-                </div>
-              ) : null}
-            </form>
-          </section>
-        ) : (
-          /* Tease the future Pro feature without exposing the picker. */
-          <section id="account-username" className={styles.card} aria-label={t('account.usernameTitle')}>
-            <h2 className={styles.cardTitle}>{t('account.usernameTitle')}</h2>
-            <p className={styles.usernameHint} style={{ marginTop: 0 }}>
-              {t('account.usernameProSoon')}
+            <p
+              id="username-availability"
+              className={styles.availability}
+              aria-live="polite"
+              role="status"
+            >
+              {renderAvailability(availability, t)}
             </p>
+
+            <p className={styles.usernameHint} id="username-hint">
+              {t('account.usernameHint')}
+            </p>
+
+            <div className={styles.formRow}>
+              <button type="submit" className={styles.saveButton} disabled={!canSubmit}>
+                {save.kind === 'saving'
+                  ? t('account.saving')
+                  : cleared
+                    ? t('account.clearUsername')
+                    : t('account.saveUsername')}
+              </button>
+              {save.kind === 'error' ? (
+                <p className={styles.errorMsg} role="alert">{save.message}</p>
+              ) : null}
+              {save.kind === 'saved' ? (
+                <p className={styles.successMsg} role="status">
+                  {save.value
+                    ? t('account.usernameSaved', { username: save.value })
+                    : t('account.usernameCleared')}
+                </p>
+              ) : null}
+            </div>
+
             {effectiveUsername ? (
               <div className={styles.publicLink}>
                 <span aria-hidden>🔗</span>
                 <span>
                   {t('account.publicLink')}{' '}
-                  <span className={styles.publicLinkUrl}>
+                  <a
+                    className={styles.publicLinkUrl}
+                    href={profileHref ?? undefined}
+                    target="_blank"
+                    rel="noopener"
+                  >
                     acoffee.com/{effectiveUsername}
-                  </span>
+                  </a>
                 </span>
+                <button
+                  type="button"
+                  className={styles.publicLinkCopy}
+                  onClick={() => void copyProfileLink()}
+                >
+                  {linkCopied ? t('account.linkCopied') : t('account.copyLink')}
+                </button>
               </div>
             ) : null}
-          </section>
-        )}
+          </form>
+        </section>
 
         <ProfileVisibilityCard
           hasUsername={!!effectiveUsername}
@@ -731,22 +772,19 @@ function SignedInAccountPage({
           initialLastErrorAt={msFromMaybe(sessionUser.busyCalendarLastErrorAt)}
         />
 
-        <section id="account-stats" className={styles.card} aria-label={t('account.statsTitle')}>
-          <h2 className={styles.cardTitle}>{t('account.statsTitle')}</h2>
-          <div className={styles.statsRow}>
-            <a href={passportHref} className={`${styles.statCell} ${styles.statCellLink}`}>
-              <div className={styles.statCellValue}>{stats.shops}</div>
-              <div className={styles.statCellLabel}>{t('passport.statShops')}</div>
-            </a>
-            <a href={passportHref} className={`${styles.statCell} ${styles.statCellLink}`}>
-              <div className={styles.statCellValue}>{stats.total}</div>
-              <div className={styles.statCellLabel}>{t('passport.statVisits')}</div>
-            </a>
-            <a href={passportHref} className={`${styles.statCell} ${styles.statCellLink}`}>
-              <div className={styles.statCellValue}>{stats.streak}</div>
-              <div className={styles.statCellLabel}>{t('passport.statStreak')}</div>
-            </a>
+
+        <section id="account-identity" className={styles.card} aria-label={t('account.identityTitle')}>
+          <h2 className={styles.cardTitle}>{t('account.identityTitle')}</h2>
+          <div className={styles.identityRow}>
+            <span className={styles.identityKey}>{t('account.email')}</span>
+            <span className={styles.identityValue}>{sessionUser.email}</span>
           </div>
+          {createdAt != null ? (
+            <div className={styles.identityRow}>
+              <span className={styles.identityKey}>{t('account.memberSince')}</span>
+              <span className={styles.identityValue}>{formatAbsoluteDate(createdAt, locale)}</span>
+            </div>
+          ) : null}
         </section>
 
         <section id="account-export" className={styles.card} aria-label={t('account.exportTitle')}>
@@ -862,6 +900,7 @@ function SignedInAccountPage({
         />
       ) : null}
     </div>
+    </AccountRefreshContext.Provider>
   );
 }
 
@@ -1028,40 +1067,72 @@ interface VisibilityProps {
 }
 
 /**
- * Toggle for `acoffee.com/<username>` visibility. Only useful once the user
- * has a slug; before then the toggle is disabled. While the global username
- * picker is gated (USERNAMES_PUBLIC=false) effectively no one has a slug
- * yet, so the card mostly renders as a "soon" placeholder — but it'll start
- * working the moment the picker opens, no extra deploy needed.
+ * Settings sections, grouped for the sidebar. Order here = render order on
+ * the page; when a card is added, add its JSX `id` here too.
  */
+interface TocGroup {
+  key: 'profile' | 'booking' | 'account';
+  labelKey: string;
+  items: ReadonlyArray<{ id: string; labelKey: string }>;
+}
 
-/**
- * Sidebar TOC for AccountPage on desktop (≥1024px). Lists every settings
- * section in render order; a click smooth-scrolls to the section, and an
- * IntersectionObserver-backed scroll spy highlights whichever section is
- * currently in view. Hidden via CSS below the breakpoint — mobile users
- * just scroll the page like they do today.
- *
- * The id list lives here (not in some shared module) because the rendering
- * site is the only consumer; if a card is added, both the JSX `id` and
- * this list need updating, and keeping them adjacent makes that obvious.
- */
-const TOC_SECTIONS: ReadonlyArray<{ id: string; labelKey: string }> = [
-  { id: 'account-identity', labelKey: 'account.identityTitle' },
-  { id: 'account-username', labelKey: 'account.usernameTitle' },
-  { id: 'account-visibility', labelKey: 'account.profileTitle' },
-  { id: 'account-avatar', labelKey: 'account.avatarTitle' },
-  { id: 'account-basic', labelKey: 'account.basicInfoTitle' },
-  { id: 'account-social', labelKey: 'account.socialLinksTitle' },
-  { id: 'account-theme', labelKey: 'account.themeTitle' },
-  { id: 'account-cafes', labelKey: 'account.featuredCafeLabel' },
-  { id: 'account-booking', labelKey: 'account.bookingTitle' },
-  { id: 'account-calendar', labelKey: 'account.calendarTitle' },
-  { id: 'account-stats', labelKey: 'account.statsTitle' },
-  { id: 'account-export', labelKey: 'account.exportTitle' },
-  { id: 'account-sessions', labelKey: 'account.sessionsTitle' },
-  { id: 'account-danger', labelKey: 'account.deleteTitle' },
+const TOC_GROUPS: ReadonlyArray<TocGroup> = [
+  {
+    key: 'profile',
+    labelKey: 'account.tocGroupProfile',
+    items: [
+      { id: 'account-username', labelKey: 'account.usernameTitle' },
+      { id: 'account-visibility', labelKey: 'account.profileTitle' },
+      { id: 'account-avatar', labelKey: 'account.avatarTitle' },
+      { id: 'account-basic', labelKey: 'account.basicInfoTitle' },
+      { id: 'account-social', labelKey: 'account.socialLinksTitle' },
+      { id: 'account-theme', labelKey: 'account.themeTitle' },
+      { id: 'account-cafes', labelKey: 'account.featuredCafeLabel' },
+    ],
+  },
+  {
+    key: 'booking',
+    labelKey: 'account.tocGroupBooking',
+    items: [
+      { id: 'account-booking', labelKey: 'account.bookingTitle' },
+      { id: 'account-calendar', labelKey: 'account.calendarTitle' },
+    ],
+  },
+  {
+    key: 'account',
+    labelKey: 'account.tocGroupAccount',
+    items: [
+      { id: 'account-identity', labelKey: 'account.identityTitle' },
+      { id: 'account-export', labelKey: 'account.exportTitle' },
+      { id: 'account-sessions', labelKey: 'account.sessionsTitle' },
+      { id: 'account-danger', labelKey: 'account.deleteTitle' },
+    ],
+  },
 ];
+
+const TOC_IDS: ReadonlyArray<string> = TOC_GROUPS.flatMap((g) => g.items.map((i) => i.id));
+
+/** Setup progress for the sections that make a profile / booking page
+ *  actually usable. Sections absent from the map are optional and get no
+ *  mark (social links, theme, calendar…). */
+type SectionStatus = 'done' | 'todo';
+type SectionStatusMap = Partial<Record<string, SectionStatus>>;
+
+/** Old / short anchors other pages may link to → real section ids. */
+const SECTION_HASH_ALIASES: Record<string, string> = {
+  username: 'account-username',
+  profile: 'account-visibility',
+  booking: 'account-booking',
+  calendar: 'account-calendar',
+};
+
+function scrollToSection(id: string, behavior: ScrollBehavior = 'smooth') {
+  const el = document.getElementById(id);
+  if (!el) return false;
+  el.scrollIntoView({ behavior, block: 'start' });
+  history.replaceState(null, '', `#${id}`);
+  return true;
+}
 
 /** Watch each section id and report the topmost one currently in view.
  *  Falls back to the first id if nothing is intersecting (e.g. very long
@@ -1094,42 +1165,108 @@ function useScrollSpy(ids: ReadonlyArray<string>): string {
   return activeId;
 }
 
-function AccountToc() {
+function groupProgress(g: TocGroup, status: SectionStatusMap) {
+  const tracked = g.items.filter((i) => status[i.id] != null);
+  return {
+    total: tracked.length,
+    done: tracked.filter((i) => status[i.id] === 'done').length,
+  };
+}
+
+/**
+ * Settings navigation. Desktop (≥1024px): sticky side rail, grouped, with a
+ * ✓ / dot on the sections that make the public page and booking usable.
+ * Below that: a sticky row of group chips — mobile used to get no
+ * navigation at all and had to scroll through every card.
+ */
+function AccountToc({ status }: { status: SectionStatusMap }) {
   const { t } = useI18n();
-  const ids = TOC_SECTIONS.map((s) => s.id);
-  const activeId = useScrollSpy(ids);
+  const activeId = useScrollSpy(TOC_IDS);
+  const activeGroup = TOC_GROUPS.find((g) => g.items.some((i) => i.id === activeId))?.key;
   return (
-    <nav className={styles.toc} aria-label={t('account.tocAria')}>
-      <ol className={styles.tocList}>
-        {TOC_SECTIONS.map((s) => (
-          <li key={s.id}>
+    <>
+      <nav className={styles.toc} aria-label={t('account.tocAria')}>
+        {TOC_GROUPS.map((g) => {
+          const { done, total } = groupProgress(g, status);
+          return (
+            <div key={g.key} className={styles.tocGroup}>
+              <p className={styles.tocGroupTitle}>
+                <span>{t(g.labelKey)}</span>
+                {total > 0 ? (
+                  <span
+                    className={`${styles.tocGroupProgress}${
+                      done === total ? ' ' + styles.tocGroupProgressDone : ''
+                    }`}
+                    aria-label={t('account.tocProgressAria', { done, total })}
+                  >
+                    {done}/{total}
+                  </span>
+                ) : null}
+              </p>
+              <ol className={styles.tocList}>
+                {g.items.map((s) => {
+                  const st = status[s.id];
+                  return (
+                    <li key={s.id}>
+                      <a
+                        className={`${styles.tocLink}${
+                          activeId === s.id ? ' ' + styles.tocLinkActive : ''
+                        }`}
+                        href={`#${s.id}`}
+                        aria-current={activeId === s.id ? 'location' : undefined}
+                        onClick={(e) => {
+                          if (scrollToSection(s.id)) e.preventDefault();
+                        }}
+                      >
+                        <span>{t(s.labelKey)}</span>
+                        {st === 'done' ? (
+                          <span className={styles.tocCheck} aria-label={t('account.tocDone')}>
+                            ✓
+                          </span>
+                        ) : st === 'todo' ? (
+                          <span className={styles.tocTodo} aria-label={t('account.tocTodo')} />
+                        ) : null}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          );
+        })}
+      </nav>
+      <nav className={styles.tocMobile} aria-label={t('account.tocAria')}>
+        {TOC_GROUPS.map((g) => {
+          const { done, total } = groupProgress(g, status);
+          const todo = total - done;
+          return (
             <a
-              className={`${styles.tocLink}${
-                activeId === s.id ? ' ' + styles.tocLinkActive : ''
+              key={g.key}
+              href={`#${g.items[0].id}`}
+              className={`${styles.tocChip}${
+                activeGroup === g.key ? ' ' + styles.tocChipActive : ''
               }`}
-              href={`#${s.id}`}
+              aria-current={activeGroup === g.key ? 'location' : undefined}
               onClick={(e) => {
-                // Smooth-scroll without forcing a hash navigation that the
-                // browser would jump-to abruptly. We set the hash via
-                // replaceState so back/forward still hit the right anchor.
-                const el = document.getElementById(s.id);
-                if (el) {
-                  e.preventDefault();
-                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  history.replaceState(null, '', `#${s.id}`);
-                }
+                if (scrollToSection(g.items[0].id)) e.preventDefault();
               }}
             >
-              {t(s.labelKey)}
+              {t(g.labelKey)}
+              {todo > 0 ? (
+                <span className={styles.tocChipBadge} aria-label={t('account.tocTodoCount', { count: todo })}>
+                  {todo}
+                </span>
+              ) : null}
             </a>
-          </li>
-        ))}
-      </ol>
-    </nav>
+          );
+        })}
+      </nav>
+    </>
   );
 }
 
 function ProfileVisibilityCard({ hasUsername, username, initial }: VisibilityProps) {
+  const refreshAccount = useAccountRefresh();
   const { t } = useI18n();
   const [enabled, setEnabled] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -1166,6 +1303,7 @@ function ProfileVisibilityCard({ hasUsername, username, initial }: VisibilityPro
         setError(t('account.profileSaveFailed'));
       } else {
         track('profile_visibility_set', { public: next });
+        refreshAccount();
       }
     } catch {
       setEnabled(!next);
@@ -1379,6 +1517,7 @@ async function resizeAvatarToWebp(file: File): Promise<Blob> {
  * server-side image processing required.
  */
 function AvatarCard({ initialImage }: { initialImage: string | null }) {
+  const refreshAccount = useAccountRefresh();
   const { t } = useI18n();
   const [image, setImage] = useState<string | null>(initialImage);
   const [busy, setBusy] = useState(false);
@@ -1443,6 +1582,7 @@ function AvatarCard({ initialImage }: { initialImage: string | null }) {
       if (controller.signal.aborted || !mountedRef.current) return;
       if (data.image) setImage(data.image);
       setStatus({ kind: 'ok', message: t('account.avatarUploaded') });
+      refreshAccount();
       track('avatar_uploaded', { sizeKB: Math.round(webp.size / 1024) });
     } catch (e) {
       if (controller.signal.aborted || !mountedRef.current) return;
@@ -1469,6 +1609,7 @@ function AvatarCard({ initialImage }: { initialImage: string | null }) {
       }
       setImage(null);
       setStatus({ kind: 'ok', message: t('account.avatarRemoved') });
+      refreshAccount();
       track('avatar_removed', {});
     } catch {
       setStatus({ kind: 'err', message: t('account.avatarRemoveFailed') });
@@ -1556,6 +1697,7 @@ const LINK_HANDLE_MAX = 300;
  * shouldn't be persisted as the user navigates between rows).
  */
 function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfileProps) {
+  const refreshAccount = useAccountRefresh();
   const { t } = useI18n();
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [bio, setBio] = useState(initialBio);
@@ -1601,6 +1743,7 @@ function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfileProps)
         return;
       }
       setStatus({ kind: 'ok', message: t('account.profileContentSaved') });
+      refreshAccount();
       track('profile_basic_set', { hasName: !!displayName.trim(), hasBio: !!bio.trim() });
     } catch {
       setStatus({ kind: 'err', message: t('account.profileContentSaveFailed') });
@@ -1669,6 +1812,7 @@ function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfileProps)
 }
 
 function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialLinksProps) {
+  const refreshAccount = useAccountRefresh();
   const { t } = useI18n();
   const [links, setLinks] = useState<SocialLinkDraft[]>(initialSocialLinks);
   const [showLinks, setShowLinks] = useState(initialShowSocialLinks);
@@ -1758,6 +1902,7 @@ function SocialLinksCard({ initialSocialLinks, initialShowSocialLinks }: SocialL
       }
       setLinks(cleanLinks);
       setStatus({ kind: 'ok', message: t('account.profileContentSaved') });
+      refreshAccount();
       track('profile_links_set', { linkCount: wire.length, showLinks });
     } catch {
       setStatus({ kind: 'err', message: t('account.profileContentSaveFailed') });
@@ -1888,6 +2033,7 @@ const THEME_PRESETS = [
 type ThemePreset = (typeof THEME_PRESETS)[number]['value'];
 
 function ThemeCard({ initialPreset }: { initialPreset: ThemePreset }) {
+  const refreshAccount = useAccountRefresh();
   const { t } = useI18n();
   const [preset, setPreset] = useState<ThemePreset>(initialPreset);
   const [busy, setBusy] = useState(false);
@@ -1917,6 +2063,7 @@ function ThemeCard({ initialPreset }: { initialPreset: ThemePreset }) {
         return;
       }
       setStatus({ kind: 'ok', message: t('account.themeSaved') });
+      refreshAccount();
       track('profile_theme_set', { preset: next });
     } catch {
       setPreset(prev);
@@ -1964,6 +2111,7 @@ function ThemeCard({ initialPreset }: { initialPreset: ThemePreset }) {
 }
 
 function FeaturedCafesCard() {
+  const refreshAccount = useAccountRefresh();
   const { t, locale } = useI18n();
   const { visitedShops } = useApp();
   const [cafes, setCafes] = useState<FeaturedCafeDraft[]>([]);
@@ -2153,6 +2301,7 @@ function FeaturedCafesCard() {
         /* non-fatal — local state already has the unverified default */
       }
       setStatus({ kind: 'ok', message: t('account.profileContentSaved') });
+      refreshAccount();
       track('profile_cafes_set', {
         cafeCount: cleanCafes.length,
         ownedCount: cleanCafes.filter((c) => c.relation === 'owned').length,
@@ -2561,6 +2710,7 @@ function BookingSetupCard({
   username,
   profilePublic,
 }: BookingSetupProps) {
+  const refreshAccount = useAccountRefresh();
   const { t } = useI18n();
   const [address, setAddress] = useState(initialAddress);
   const [days, setDays] = useState<Availability>(initialAvailability);
@@ -2632,6 +2782,7 @@ function BookingSetupCard({
         return;
       }
       setStatus({ kind: 'ok', message: t('account.bookingSaved') });
+      refreshAccount();
       track('booking_config_set', {
         hasAddress: !!address.trim(),
         enabledDays: WEEKDAYS.filter((d) => days[d].enabled).length,
@@ -2785,6 +2936,7 @@ function CalendarSyncCard({
   initialLastError,
   initialLastErrorAt,
 }: CalendarSyncProps) {
+  const refreshAccount = useAccountRefresh();
   const { t, locale } = useI18n();
   const [url, setUrl] = useState(initialUrl);
   const [syncedAt, setSyncedAt] = useState<number | null>(initialSyncedAt);
@@ -2834,6 +2986,7 @@ function CalendarSyncCard({
       // Save baseline → next dirty check will read clean.
       setSavedUrl(payload.busyCalendarIcsUrl ?? '');
       setStatus({ kind: 'ok', message: t('account.calendarSaved') });
+      refreshAccount();
     } catch {
       setStatus({ kind: 'err', message: t('account.calendarSaveFailed') });
     } finally {

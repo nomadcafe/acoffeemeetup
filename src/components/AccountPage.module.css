@@ -111,6 +111,35 @@
   }
 }
 
+.tocGroup + .tocGroup {
+  margin-top: 1.1rem;
+}
+
+.tocGroupTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.35rem;
+  padding-left: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ac-text-muted);
+}
+
+.tocGroupProgress {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ac-accent);
+}
+
+.tocGroupProgressDone {
+  color: var(--ac-text-muted);
+}
+
 .tocList {
   list-style: none;
   margin: 0;
@@ -124,7 +153,10 @@
 }
 
 .tocLink {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.32rem 0.75rem;
   margin-left: -1px; /* overlap the rail's border so the active border replaces it cleanly */
   border-left: 2px solid transparent;
@@ -146,12 +178,99 @@
   font-weight: 600;
 }
 
+/* Setup-progress marks on the sections a usable public page needs. */
+.tocCheck {
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #4d7c0f;
+}
+
+.tocTodo {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ac-accent);
+}
+
+/* Mobile / tablet: the side rail is hidden below 1024px, so show a sticky
+   row of group chips under the header instead of no navigation at all. */
+.tocMobile {
+  position: sticky;
+  top: 3.25rem;
+  z-index: 10;
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -1rem;
+  padding: 0.5rem 1rem;
+  background: var(--ac-page-bg);
+  border-bottom: 1px solid var(--ac-border);
+}
+
+.tocMobile::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .tocMobile {
+    display: none;
+  }
+}
+
+.tocChip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--ac-border-strong);
+  border-radius: var(--ac-radius-pill, 999px);
+  background: var(--ac-surface);
+  color: var(--ac-text);
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tocChip:focus-visible {
+  outline: 2px solid var(--ac-focus-ring, var(--ac-accent));
+  outline-offset: 2px;
+}
+
+.tocChipActive {
+  border-color: var(--ac-accent);
+  color: var(--ac-accent-dark, var(--ac-accent));
+  font-weight: 600;
+}
+
+.tocChipBadge {
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--ac-accent);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.1rem;
+  text-align: center;
+}
+
 /* Sticky-anchor offset: when the user clicks a TOC item we smooth-scroll
    the section to the top, but the sticky header would clip the title.
    `scroll-margin-top` adds a phantom buffer above each anchor so the
    title lands below the header instead of beneath it. */
 .card {
-  scroll-margin-top: 4.5rem;
+  scroll-margin-top: 7.5rem; /* sticky header + mobile chip bar */
+}
+
+@media (min-width: 1024px) {
+  .card {
+    scroll-margin-top: 4.5rem;
+  }
 }
 
 .hero {
@@ -785,6 +904,27 @@
   font-weight: 600;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   word-break: break-all;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.publicLinkCopy {
+  flex: none;
+  margin-left: auto;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  background: #fff;
+  color: #14532d;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.publicLinkCopy:hover {
+  background: #dcfce7;
 }
 
 /* ---------- clickable stat cells ---------- */
