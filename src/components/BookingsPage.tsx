@@ -170,7 +170,10 @@ export function BookingsPage() {
   const [weekAnchorMs, setWeekAnchorMs] = useState<number>(() => Date.now());
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
-    setState({ kind: 'loading' });
+    // Only the first load shows the skeleton. Refreshes after approve /
+    // reject / cancel keep the current list on screen and swap it when the
+    // new data lands, instead of flashing the whole page back to skeleton.
+    setState((prev) => (prev.kind === 'ready' ? prev : { kind: 'loading' }));
     try {
       const r = await fetch('/api/bookings', {
         credentials: 'include',
@@ -186,7 +189,9 @@ export function BookingsPage() {
       if (signal?.aborted || (e instanceof DOMException && e.name === 'AbortError')) {
         return;
       }
-      setState({ kind: 'error' });
+      // A failed background refresh keeps the list we already have; the
+      // action itself succeeded, and the next visit will re-fetch.
+      setState((prev) => (prev.kind === 'ready' ? prev : { kind: 'error' }));
     }
   }, []);
 
@@ -329,8 +334,9 @@ export function BookingsPage() {
 
   return (
     <div className={accountStyles.app}>
+      <SkipToContent />
       <PageHeader homeHref={homeHref} />
-      <main className={accountStyles.main}>
+      <main id="content" tabIndex={-1} className={accountStyles.main}>
         <div className={accountStyles.hero}>
           <h1 className={accountStyles.pageTitle}>{t('bookings.title')}</h1>
           <p className={accountStyles.lead}>{t('bookings.lead')}</p>
