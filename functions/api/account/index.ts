@@ -9,7 +9,8 @@ import { asc, eq } from 'drizzle-orm';
 import { createAuth, type AuthEnv } from '../../_lib/auth';
 import { getDb } from '../../_lib/db';
 import { user, featuredCafes } from '../../_lib/db/schema';
-import { getSessionUser, jsonError } from '../../_lib/passport';
+import { getSessionUser, jsonError, jsonErrorCoded } from '../../_lib/passport';
+import { cleanProfileText, profileTextIssue } from '../../../src/utils/profileText';
 import {
   GoogleMapsError,
   fetchPlaceWebsiteUri,
@@ -274,11 +275,18 @@ export const onRequestPatch: PagesFunction<AuthEnv> = async ({ request, env }) =
 
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   if (input.profilePublic !== undefined) patch.profilePublic = input.profilePublic;
-  if (input.displayName !== undefined) {
-    patch.displayName = input.displayName ? input.displayName : null;
-  }
-  if (input.bio !== undefined) {
-    patch.bio = input.bio ? input.bio : null;
+  // Free-text profile fields are shown under our domain (profile, share
+  // previews, café cards, booking emails): store the cleaned form and refuse
+  // links, contact details and staff/brand impersonation.
+  for (const field of ['displayName', 'bio'] as const) {
+    const raw = input[field];
+    if (raw === undefined) continue;
+    const cleaned = raw ? cleanProfileText(raw) : '';
+    const issue = cleaned ? profileTextIssue(cleaned, field) : null;
+    if (issue) {
+      return jsonErrorCoded(`${field} contains a ${issue}`, `profile_text_${issue}`, 400);
+    }
+    patch[field] = cleaned || null;
   }
   if (input.socialLinks !== undefined) {
     // normalize() dedupes by platform and re-checks every handle.

@@ -17,6 +17,7 @@ import {
 } from '../../../_lib/bookingEmails';
 import { makeCancelToken } from '../../../_lib/cancelToken';
 import { buildBookingIcs, icsToBase64 } from '../../../_lib/ics';
+import { safeProfileText } from '../../../../src/utils/profileText';
 
 /**
  * Host approves a `requested` booking. Body contains the café the host
@@ -214,7 +215,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, para
       .where(eq(user.id, ctx.user.id));
 
     if (organizer) {
-      const handle = organizer.displayName?.trim() || `@${organizer.username ?? 'host'}`;
+      const handle = safeProfileText(organizer.displayName, 'displayName') || `@${organizer.username ?? 'host'}`;
       const startStr = formatTimePair(
         finalMs,
         { tz: organizer.timezone || 'UTC', label: 'host' },

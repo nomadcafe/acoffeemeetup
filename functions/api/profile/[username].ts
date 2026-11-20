@@ -8,6 +8,7 @@ import {
   resolveSocialLink,
   type ResolvedSocialLink,
 } from '../../../src/utils/socialPlatforms';
+import { safeProfileText } from '../../../src/utils/profileText';
 
 interface PublicShop {
   id: string;
@@ -254,9 +255,10 @@ export const onRequestGet: PagesFunction<AuthEnv> = async ({ env, params }) => {
 
   const payload: PublicProfile = {
     username,
-    displayName: owner.displayName ?? null,
+    // Filtered on read: legacy rows with links / impersonation are hidden.
+    displayName: safeProfileText(owner.displayName, 'displayName'),
     image: owner.image ?? null,
-    bio: owner.bio ?? null,
+    bio: safeProfileText(owner.bio, 'bio'),
     /* Privacy toggle: when the owner has hidden their social links, the
      * public response simply ships an empty array — same shape, no
      * special-casing needed in the renderer. */

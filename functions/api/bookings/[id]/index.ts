@@ -10,6 +10,7 @@ import {
   renderVisitorCancellationHtml,
   renderVisitorRescheduleRequestHtml,
 } from '../../../_lib/bookingEmails';
+import { safeProfileText } from '../../../../src/utils/profileText';
 
 /**
  * Cancels a booking. Only the organizer can cancel. The same endpoint
@@ -66,7 +67,7 @@ export const onRequestDelete: PagesFunction<AuthEnv> = async ({ request, env, pa
       .from(user)
       .where(eq(user.id, ctx.user.id));
 
-    const handle = organizer?.displayName?.trim() || `@${organizer?.username ?? 'host'}`;
+    const handle = safeProfileText(organizer?.displayName, 'displayName') || `@${organizer?.username ?? 'host'}`;
     const startStr = formatTimePair(
       startMs,
       { tz: organizer?.timezone || 'UTC', label: 'host' },

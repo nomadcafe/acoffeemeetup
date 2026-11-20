@@ -10,6 +10,7 @@ import {
   loadProposalPreview,
   type PreviewLocale,
 } from './_lib/proposalPreview';
+import { safeProfileText } from '../src/utils/profileText';
 
 /**
  * Root middleware that rewrites the SPA's static index.html for two
@@ -203,8 +204,8 @@ async function fetchProfileForOg(env: AuthEnv, username: string): Promise<Profil
 
   return {
     username: owner.username ?? username,
-    displayName: owner.displayName ?? null,
-    bio: owner.bio ?? null,
+    displayName: safeProfileText(owner.displayName, 'displayName'),
+    bio: safeProfileText(owner.bio, 'bio'),
     cups,
     shops,
   };

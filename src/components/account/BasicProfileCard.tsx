@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../context/I18nContext';
+import { profileTextIssue, type ProfileTextIssue } from '../../utils/profileText';
 import { track } from '../../utils/analytics';
 import styles from '../AccountPage.module.css';
 import {
@@ -62,8 +63,14 @@ export function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfil
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDisplayName, initialBio, busy]);
 
+  // Same rules the server enforces — flag problems while typing.
+  const nameIssue = profileTextIssue(displayName, 'displayName');
+  const bioIssue = profileTextIssue(bio, 'bio');
+  const issueText = (issue: ProfileTextIssue | null) =>
+    issue ? t(`account.profileTextIssue.${issue}`) : null;
+
   async function handleSave() {
-    if (busy) return;
+    if (busy || nameIssue || bioIssue) return;
     setBusy(true);
     setStatus(null);
     try {
@@ -76,7 +83,14 @@ export function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfil
         }),
       });
       if (!res.ok) {
-        setStatus({ kind: 'err', message: t('account.profileContentSaveFailed') });
+        const body = (await res.json().catch(() => ({}))) as { code?: string };
+        const issue = body.code?.startsWith('profile_text_')
+          ? (body.code.slice('profile_text_'.length) as ProfileTextIssue)
+          : null;
+        setStatus({
+          kind: 'err',
+          message: issueText(issue) ?? t('account.profileContentSaveFailed'),
+        });
         return;
       }
       markBasicSaved(basicKey(displayName, bio));
@@ -106,7 +120,14 @@ export function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfil
           placeholder={t('account.displayNamePlaceholder')}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
+          aria-invalid={nameIssue ? true : undefined}
+          aria-describedby={nameIssue ? 'display-name-issue' : undefined}
         />
+        {nameIssue ? (
+          <span id="display-name-issue" className={styles.errorMsg} role="alert">
+            {issueText(nameIssue)}
+          </span>
+        ) : null}
         <span className={styles.charCount} aria-live="polite">
           {displayName.length} / {DISPLAY_NAME_MAX}
         </span>
@@ -121,7 +142,14 @@ export function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfil
           placeholder={t('account.bioPlaceholder')}
           value={bio}
           onChange={(e) => setBio(e.target.value)}
+          aria-invalid={bioIssue ? true : undefined}
+          aria-describedby={bioIssue ? 'bio-issue' : undefined}
         />
+        {bioIssue ? (
+          <span id="bio-issue" className={styles.errorMsg} role="alert">
+            {issueText(bioIssue)}
+          </span>
+        ) : null}
         <span className={styles.charCount} aria-live="polite">
           {bio.length} / {BIO_MAX}
         </span>
@@ -132,7 +160,7 @@ export function BasicProfileCard({ initialDisplayName, initialBio }: BasicProfil
           type="button"
           className={styles.saveButton}
           onClick={() => void handleSave()}
-          disabled={busy}
+          disabled={busy || !!nameIssue || !!bioIssue}
         >
           {busy ? t('account.saving') : t('account.profileContentSave')}
         </button>

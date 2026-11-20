@@ -5,6 +5,7 @@ import { getDb } from '../../_lib/db';
 import { featuredCafes, user, visitedShops } from '../../_lib/db/schema';
 import { jsonError } from '../../_lib/jsonError';
 import { rateLimit, rateLimitResponse } from '../../_lib/rateLimit';
+import { safeProfileText } from '../../../src/utils/profileText';
 
 /**
  * Per-profile share-card PNG for og:image. Renders a 1200×630 image with
@@ -137,8 +138,8 @@ async function loadProfile(env: AuthEnv, username: string): Promise<ProfileForCa
 
   return {
     username: owner.username ?? username,
-    displayName: owner.displayName ?? null,
-    bio: owner.bio ?? null,
+    displayName: safeProfileText(owner.displayName, 'displayName'),
+    bio: safeProfileText(owner.bio, 'bio'),
     cups,
     shops,
     streak,

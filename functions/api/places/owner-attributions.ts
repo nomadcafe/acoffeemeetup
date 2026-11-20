@@ -6,6 +6,7 @@ import { getDb } from '../../_lib/db';
 import { featuredCafes, user } from '../../_lib/db/schema';
 import { jsonError } from '../../_lib/jsonError';
 import { rateLimit, rateLimitResponse } from '../../_lib/rateLimit';
+import { safeProfileText } from '../../../src/utils/profileText';
 
 /**
  * Reverse-link lookup for the agent results: given a list of Google Place
@@ -100,7 +101,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, wait
               // than re-querying.
               result[placeId] = {
                 username: parsed.username,
-                displayName: parsed.displayName ?? null,
+                displayName: safeProfileText(parsed.displayName, 'displayName'),
                 relation: parsed.relation === 'owned' ? 'owned' : 'favorite',
                 verified: parsed.verified === true,
               };
@@ -156,7 +157,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, wait
     const verified = relation === 'owned' && r.verified === true;
     const candidate: Attribution = {
       username: r.username,
-      displayName: r.displayName ?? null,
+      displayName: safeProfileText(r.displayName, 'displayName'),
       relation,
       verified,
     };

@@ -7,6 +7,7 @@ import { getDb } from '../../../_lib/db';
 import { bookings, user } from '../../../_lib/db/schema';
 import { getSessionContext, jsonError } from '../../../_lib/passport';
 import { formatTimePair } from '../../../_lib/bookingEmails';
+import { safeProfileText } from '../../../../src/utils/profileText';
 
 /**
  * Host rejects a `requested` booking. Optional `reason` body field gets
@@ -78,7 +79,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env, para
       .where(eq(user.id, ctx.user.id));
 
     if (organizer) {
-      const handle = organizer.displayName?.trim() || `@${organizer.username ?? 'host'}`;
+      const handle = safeProfileText(organizer.displayName, 'displayName') || `@${organizer.username ?? 'host'}`;
       const slug = organizer.username ?? '';
       const startStr = formatTimePair(
         startMs,

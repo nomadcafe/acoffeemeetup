@@ -12,6 +12,7 @@ import {
   formatTimePair,
   renderOrganizerCancellationHtml,
 } from '../../_lib/bookingEmails';
+import { safeProfileText } from '../../../src/utils/profileText';
 
 /**
  * Visitor-initiated cancellation. The cancel link in the visitor's
@@ -70,7 +71,7 @@ export const onRequestPost: PagesFunction<AuthEnv> = async ({ request, env }) =>
     .from(user)
     .where(eq(user.id, row.organizerUserId));
 
-  const handle = organizer?.displayName?.trim() || `@${organizer?.username ?? 'host'}`;
+  const handle = safeProfileText(organizer?.displayName, 'displayName') || `@${organizer?.username ?? 'host'}`;
 
   if (row.status === 'cancelled') {
     const resp: CancelResponse = {
