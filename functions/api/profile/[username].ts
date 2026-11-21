@@ -86,7 +86,7 @@ export interface PublicProfile {
 /** Stored links (new or legacy shape) → resolved allowlisted links. */
 function parseSocialLinks(raw: string | null | undefined): SocialLink[] {
   return normalizeSocialLinks(raw ?? '[]')
-    .map(resolveSocialLink)
+    .map((l) => resolveSocialLink(l))
     .filter((l): l is SocialLink => l !== null);
 }
 

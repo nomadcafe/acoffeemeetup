@@ -90,7 +90,7 @@ export async function loadReviewSnapshot(db: Db, userId: string): Promise<Review
 /** The profile fields as an HTML block — shared by the email and the admin page. */
 export function renderProfileFacts(p: ReviewSnapshot, origin: string): string {
   const links = normalizeSocialLinks(p.socialLinks ?? '[]')
-    .map(resolveSocialLink)
+    .map((l) => resolveSocialLink(l))
     .filter((l) => l !== null)
     .map((l) => `${esc(l.name)}: <a href="${esc(l.url)}">${esc(l.display)}</a>`)
     .join('<br>');
