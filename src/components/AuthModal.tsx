@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../context/I18nContext';
 import { authClient } from '../utils/authClient';
+import { TurnstileWidget, type TurnstileHandle } from './TurnstileWidget';
 import styles from './AuthModal.module.css';
 
 interface AuthModalProps {
@@ -67,8 +68,13 @@ function buildCallbackURL(): string {
 }
 
 export function AuthModal({ open, onClose, callbackURL }: AuthModalProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [email, setEmail] = useState('');
+  // Turnstile guards the email form only (Google sign-in is already
+  // bot-gated by Google). Token is single-use: reset after every submit.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileBroken, setTurnstileBroken] = useState(false);
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -153,20 +159,27 @@ export function AuthModal({ open, onClose, callbackURL }: AuthModalProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !turnstileToken) return;
     setPhase('sending');
     setErrorMsg(null);
+    const token = turnstileToken;
+    turnstileRef.current?.reset();
     try {
-      const { error } = await authClient.signIn.magicLink({
-        email: email.trim(),
-        callbackURL: callbackURL ?? buildCallbackURL(),
-      });
+      const { error } = await authClient.signIn.magicLink(
+        {
+          email: email.trim(),
+          callbackURL: callbackURL ?? buildCallbackURL(),
+        },
+        { headers: { 'x-turnstile-token': token } },
+      );
       if (error) {
         setPhase('error');
         setErrorMsg(
           error.code === 'DISPOSABLE_EMAIL'
             ? t('auth.disposableEmail')
-            : (error.message ?? t('auth.error')),
+            : error.code === 'TURNSTILE_FAILED'
+              ? t('auth.turnstileFailed')
+              : (error.message ?? t('auth.error')),
         );
         return;
       }
@@ -277,10 +290,26 @@ export function AuthModal({ open, onClose, callbackURL }: AuthModalProps) {
                 disabled={phase === 'sending'}
               />
 
+              <TurnstileWidget
+                ref={turnstileRef}
+                className={styles.turnstile}
+                language={locale === 'zh' ? 'zh-cn' : locale}
+                onToken={(tok) => {
+                  setTurnstileToken(tok);
+                  if (tok) setTurnstileBroken(false);
+                }}
+                onError={() => setTurnstileBroken(true)}
+              />
+              {turnstileBroken && (
+                <p className={styles.error} role="alert">
+                  {t('auth.turnstileError')}
+                </p>
+              )}
+
               <button
                 type="submit"
                 className={styles.submit}
-                disabled={phase === 'sending' || !email.trim()}
+                disabled={phase === 'sending' || !email.trim() || !turnstileToken}
               >
                 {phase === 'sending' ? t('auth.sending') : t('auth.sendButton')}
               </button>

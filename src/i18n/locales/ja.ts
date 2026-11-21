@@ -401,6 +401,8 @@ export const messages: MessageDict = {
   'auth.sentResend': '再送信',
   'auth.error': 'リンクを送信できませんでした。もう一度お試しください。',
   'auth.disposableEmail': '使い捨てメールアドレスはご利用いただけません。普段お使いのメールアドレス、または Google でサインインしてください。',
+  'auth.turnstileError': '人間確認を読み込めませんでした。このサイトでコンテンツブロッカーをオフにするか、ページを再読み込みしてください。Google でのサインインも可能です。',
+  'auth.turnstileFailed': '人間確認に失敗しました。もう一度お試しください。',
   'auth.privacyNote': 'メールアドレスはサインインのみに使用します。',
   'auth.close': '閉じる',
   'auth.signedInAs': '{{email}} でサインイン中',

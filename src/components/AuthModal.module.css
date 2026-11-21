@@ -241,3 +241,9 @@
 .resend:hover {
   background: var(--ac-surface-tinted);
 }
+
+/* Turnstile renders nothing for most visitors (interaction-only); when a
+   challenge is needed it inserts a ~300x65 iframe here. */
+.turnstile:not(:empty) {
+  margin: 4px 0 8px;
+}

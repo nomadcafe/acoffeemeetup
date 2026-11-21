@@ -397,6 +397,8 @@ export const messages: MessageDict = {
   'auth.sentResend': '再发一次',
   'auth.error': '发送失败，请重试',
   'auth.disposableEmail': '不支持临时邮箱，请使用常用邮箱或通过 Google 登录。',
+  'auth.turnstileError': '人机验证没有加载出来。请对本站关闭广告/内容拦截，或刷新页面，也可以用 Google 登录。',
+  'auth.turnstileFailed': '人机验证没有通过，请再试一次。',
   'auth.privacyNote': '我们只用你的邮箱用于登录，不会发营销邮件。',
   'auth.close': '关闭',
   'auth.signedInAs': '已登录：{{email}}',

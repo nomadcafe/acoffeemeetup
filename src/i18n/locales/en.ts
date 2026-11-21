@@ -415,6 +415,8 @@ export const messages: MessageDict = {
   'auth.sentResend': 'Send another',
   'auth.error': "Couldn't send the link. Try again?",
   'auth.disposableEmail': "Disposable email addresses aren't supported. Please use your regular email or continue with Google.",
+  'auth.turnstileError': "Couldn't load the quick human check. Turn off content blockers for this site or refresh the page — or continue with Google.",
+  'auth.turnstileFailed': "We couldn't verify you're human — please try again.",
   'auth.privacyNote': 'We use your email only for sign-in.',
   'auth.close': 'Close',
   'auth.signedInAs': 'Signed in as {{email}}',
