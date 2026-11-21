@@ -400,6 +400,7 @@ export const messages: MessageDict = {
     '{{email}} にサインインリンクを送信しました。15 分で期限切れになります。',
   'auth.sentResend': '再送信',
   'auth.error': 'リンクを送信できませんでした。もう一度お試しください。',
+  'auth.disposableEmail': '使い捨てメールアドレスはご利用いただけません。普段お使いのメールアドレス、または Google でサインインしてください。',
   'auth.privacyNote': 'メールアドレスはサインインのみに使用します。',
   'auth.close': '閉じる',
   'auth.signedInAs': '{{email}} でサインイン中',

@@ -1,5 +1,6 @@
 import { createAuth, type AuthEnv } from '../../_lib/auth';
 import { rateLimit, rateLimitResponse } from '../../_lib/rateLimit';
+import { isDisposableEmail } from '../../_lib/disposableEmail';
 
 // Catchall — Better Auth owns every /api/auth/* path, including magic-link
 // send / verify / get-session / sign-out. Adding individual routes alongside
@@ -36,6 +37,20 @@ export const onRequest: PagesFunction<AuthEnv> = async ({ request, env, waitUnti
       const body = (await request.clone().json()) as { email?: unknown };
       if (typeof body.email === 'string' && body.email.length > 0) {
         const emailKey = body.email.toLowerCase().trim();
+        /* Throwaway inboxes are the cheapest way to mint scam profiles.
+         * Checked before the per-email limiter so blocked addresses
+         * don't consume rate-limit budget. `code` lets AuthModal show a
+         * localized message (Better Auth's client surfaces it as
+         * error.code). */
+        if (isDisposableEmail(emailKey)) {
+          return Response.json(
+            {
+              code: 'DISPOSABLE_EMAIL',
+              message: 'Disposable email addresses are not allowed.',
+            },
+            { status: 400 },
+          );
+        }
         const emailResult = await rateLimit(
           request,
           { waitUntil },

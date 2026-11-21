@@ -396,6 +396,7 @@ export const messages: MessageDict = {
   'auth.sentBody': '已向 {{email}} 发送登录链接，15 分钟内有效。',
   'auth.sentResend': '再发一次',
   'auth.error': '发送失败，请重试',
+  'auth.disposableEmail': '不支持临时邮箱，请使用常用邮箱或通过 Google 登录。',
   'auth.privacyNote': '我们只用你的邮箱用于登录，不会发营销邮件。',
   'auth.close': '关闭',
   'auth.signedInAs': '已登录：{{email}}',

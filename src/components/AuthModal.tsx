@@ -163,7 +163,11 @@ export function AuthModal({ open, onClose, callbackURL }: AuthModalProps) {
       });
       if (error) {
         setPhase('error');
-        setErrorMsg(error.message ?? t('auth.error'));
+        setErrorMsg(
+          error.code === 'DISPOSABLE_EMAIL'
+            ? t('auth.disposableEmail')
+            : (error.message ?? t('auth.error')),
+        );
         return;
       }
       setPhase('sent');

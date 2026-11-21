@@ -414,6 +414,7 @@ export const messages: MessageDict = {
     'We sent a sign-in link to {{email}}. It expires in 15 minutes.',
   'auth.sentResend': 'Send another',
   'auth.error': "Couldn't send the link. Try again?",
+  'auth.disposableEmail': "Disposable email addresses aren't supported. Please use your regular email or continue with Google.",
   'auth.privacyNote': 'We use your email only for sign-in.',
   'auth.close': 'Close',
   'auth.signedInAs': 'Signed in as {{email}}',
